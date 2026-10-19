@@ -46,7 +46,7 @@ python test_flow.py # kiểm thử luồng nghiệp vụ
 Tài khoản mẫu: `admin / admin123` · độc giả `sv001, sv002, sv003 / 123456`
 (sv002 đang có sách quá hạn và nợ phạt để demo các ràng buộc).
 
-## 7. Phần giao diện (Bạn A phụ trách)
+## 7. Phần giao diện
 Toàn bộ giao diện nằm trong `app/templates/` và `app/static/` – không dùng Bootstrap, tự xây design system riêng để đồng nhất.
 
 | File | Vai trò |
