@@ -1,0 +1,18 @@
+{% extends "admin/_layout.html" %}
+{% from "macros.html" import csrf, icon, empty %}
+{% block title %}Thể loại{% endblock %}
+{% block admin_content %}
+<div class="page-head" data-reveal><div><span class="eyebrow">{{ icon('layers') }} Phân loại</span><h1 class="mt-1">Thể loại sách</h1></div></div>
+<form method="post" class="flex gap-1 mb-3" style="max-width:520px" data-reveal>{{ csrf() }}
+  <input name="name" class="input" placeholder="Tên thể loại mới" required><button class="btn btn-primary">{{ icon('plus') }} Thêm</button>
+</form>
+{% if categories %}
+<div class="table-wrap" style="max-width:680px" data-reveal><table class="table" style="min-width:0">
+  <thead><tr><th>Thể loại</th><th>Số đầu sách</th><th></th></tr></thead>
+  {% for c in categories %}
+  <tr><td><b>{{ c.name }}</b></td><td><span class="badge badge-primary badge-plain">{{ c.books|length }}</span></td>
+    <td><div class="row-actions"><form method="post" action="{{ url_for('admin.category_delete', cat_id=c.id) }}" data-confirm="Xoá thể loại “{{ c.name }}”?">{{ csrf() }}<button class="btn btn-danger btn-sm">{{ icon('trash') }} Xoá</button></form></div></td></tr>
+  {% endfor %}
+</table></div>
+{% else %}<div class="card">{{ empty('📂', 'Chưa có thể loại') }}</div>{% endif %}
+{% endblock %}

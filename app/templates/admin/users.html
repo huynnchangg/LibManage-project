@@ -1,0 +1,26 @@
+{% extends "admin/_layout.html" %}
+{% from "macros.html" import csrf, icon, empty %}
+{% block title %}Độc giả{% endblock %}
+{% block admin_content %}
+<div class="page-head" data-reveal><div><span class="eyebrow">{{ icon('users') }} Tài khoản</span><h1 class="mt-1">Quản lý độc giả</h1></div></div>
+<form class="toolbar" method="get" data-reveal>
+  <input name="q" value="{{ request.args.q or '' }}" class="input" style="max-width:380px" placeholder="Tên, tài khoản, mã SV…">
+  <button class="btn btn-ghost">{{ icon('search') }} Tìm</button>
+</form>
+{% if users %}
+<div class="table-wrap" data-reveal><table class="table">
+  <thead><tr><th>Độc giả</th><th>Mã SV</th><th>Email</th><th>Đang mượn</th><th>Trạng thái</th><th></th></tr></thead>
+  {% for u in users %}
+  <tr>
+    <td><div class="flex items-center gap-1"><span class="avatar">{{ u.full_name[:1]|upper }}</span><div><b>{{ u.full_name }}</b><div class="small muted">@{{ u.username }}</div></div></div></td>
+    <td>{{ u.student_code or '—' }}</td><td>{{ u.email }}</td>
+    <td>{{ u.loans|selectattr('status','equalto','borrowing')|list|length }}</td>
+    <td>{% if u.active %}<span class="badge badge-success">Hoạt động</span>{% else %}<span class="badge badge-secondary">Bị khoá</span>{% endif %}</td>
+    <td><div class="row-actions"><form method="post" action="{{ url_for('admin.user_toggle', user_id=u.id) }}"
+        {% if u.active %}data-confirm="Khoá tài khoản {{ u.username }}? Người này sẽ không đăng nhập được."{% endif %}>{{ csrf() }}
+      <button class="btn btn-sm {{ 'btn-danger' if u.active else 'btn-success' }}">{{ 'Khoá' if u.active else 'Mở khoá' }}</button></form></div></td>
+  </tr>
+  {% endfor %}
+</table></div>
+{% else %}<div class="card">{{ empty('👥', 'Chưa có độc giả') }}</div>{% endif %}
+{% endblock %}

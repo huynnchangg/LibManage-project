@@ -1,0 +1,92 @@
+{% from "macros.html" import icon %}
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#2563EB">
+  <title>{% block title %}Thư viện{% endblock %} · Thư viện NEU</title>
+  <script>
+    /* đặt theme + cờ js trước khi vẽ trang để không bị nháy */
+    (function(){var t;try{t=localStorage.getItem('theme')}catch(e){}
+    if(!t){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}
+    document.documentElement.dataset.theme=t;document.documentElement.classList.add('js')})();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="scroll-progress"></div>
+
+<header class="navbar">
+  <div class="container nav-inner">
+    <a class="brand" href="{{ url_for('main.index') }}"><span class="brand-mark">{{ icon('book') }}</span>Thư viện NEU</a>
+    <nav class="nav-links" id="nav-links">
+      <a class="nav-link {{ 'active' if request.endpoint in ('main.index','main.book_detail') }}" href="{{ url_for('main.index') }}">{{ icon('search') }} Tra cứu sách</a>
+      {% if current_user.is_authenticated and not current_user.is_admin %}
+      <a class="nav-link {{ 'active' if request.endpoint == 'main.my_loans' }}" href="{{ url_for('main.my_loans') }}">{{ icon('loans') }} Sách của tôi</a>
+      {% endif %}
+      {% if current_user.is_authenticated and current_user.is_admin %}
+      <a class="nav-link {{ 'active' if request.blueprint == 'admin' }}" href="{{ url_for('admin.dashboard') }}">{{ icon('chart') }} Quản trị</a>
+      {% endif %}
+    </nav>
+    <span class="nav-spacer"></span>
+    <div class="nav-actions">
+      <button class="icon-btn theme-toggle" type="button" aria-label="Đổi giao diện sáng/tối">
+        <span class="sun">{{ icon('sun') }}</span><span class="moon">{{ icon('moon') }}</span>
+      </button>
+      {% if current_user.is_authenticated %}
+        <div class="user-chip"><span class="avatar">{{ current_user.full_name[:1]|upper }}</span><span class="name">{{ current_user.full_name }}</span></div>
+        <form method="post" action="{{ url_for('auth.logout') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="icon-btn" aria-label="Đăng xuất" title="Đăng xuất">{{ icon('logout') }}</button>
+        </form>
+      {% else %}
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('auth.login') }}">Đăng nhập</a>
+        <a class="btn btn-primary btn-sm" href="{{ url_for('auth.register') }}">Đăng ký</a>
+      {% endif %}
+      <button class="icon-btn menu-btn" type="button" aria-label="Mở menu">{{ icon('menu') }}</button>
+    </div>
+  </div>
+</header>
+
+{# Flash message được JS đổi thành toast; <noscript> hiển thị dự phòng #}
+<div id="flashes" hidden>
+  {% for cat, msg in get_flashed_messages(with_categories=true) %}
+    <span class="flash-item" data-cat="{{ cat }}">{{ msg }}</span>
+  {% endfor %}
+</div>
+<div class="toasts" aria-live="polite"></div>
+
+<main>
+  <div class="container">{% block content %}{% endblock %}</div>
+</main>
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <a class="brand" href="{{ url_for('main.index') }}"><span class="brand-mark">{{ icon('book') }}</span>Thư viện NEU</a>
+        <p class="muted mt-2" style="max-width:380px">Hệ thống quản lý mượn trả sách trực tuyến: tra cứu nhanh, gửi yêu cầu mượn và theo dõi hạn trả ngay trên điện thoại hoặc máy tính.</p>
+      </div>
+      <div><h4>Liên kết</h4><ul>
+        <li><a href="{{ url_for('main.index') }}">Tra cứu sách</a></li>
+        {% if current_user.is_authenticated and not current_user.is_admin %}<li><a href="{{ url_for('main.my_loans') }}">Sách của tôi</a></li>{% endif %}
+        {% if not current_user.is_authenticated %}<li><a href="{{ url_for('auth.login') }}">Đăng nhập</a></li><li><a href="{{ url_for('auth.register') }}">Đăng ký độc giả</a></li>{% endif %}
+      </ul></div>
+      <div><h4>Quy định mượn</h4><ul class="muted">
+        <li>Thời hạn: {{ config.LOAN_DAYS }} ngày, gia hạn {{ config.MAX_RENEWALS }} lần</li>
+        <li>Tối đa {{ config.MAX_ACTIVE_LOANS }} cuốn cùng lúc</li>
+        <li>Phạt trả muộn: {{ '{:,}'.format(config.FINE_PER_DAY).replace(',', '.') }} đ/ngày</li>
+      </ul></div>
+    </div>
+    <div class="copy">© 2026 Thư viện NEU · Bài tập nhóm môn Lập trình Web</div>
+  </div>
+</footer>
+
+<button class="to-top" type="button" aria-label="Lên đầu trang">{{ icon('up') }}</button>
+<script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+</body>
+</html>

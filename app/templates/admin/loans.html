@@ -1,0 +1,39 @@
+{% extends "admin/_layout.html" %}
+{% from "macros.html" import csrf, icon, status_badge, empty %}
+{% block title %}Quản lý mượn trả{% endblock %}
+{% block admin_content %}
+<div class="page-head" data-reveal><div><span class="eyebrow">{{ icon('loans') }} Mượn trả</span><h1 class="mt-1">Quản lý mượn trả</h1></div></div>
+
+<div class="tabs" data-reveal>
+  {% for key, label in [('pending','Chờ duyệt'),('borrowing','Đang mượn'),('overdue','Quá hạn'),('returned','Đã trả'),('rejected','Từ chối'),('all','Tất cả')] %}
+  <a class="tab {{ 'active' if status == key }}" href="{{ url_for('admin.loans', status=key) }}">{{ label }}</a>
+  {% endfor %}
+</div>
+
+{% if loans %}
+<div class="table-wrap" data-reveal><table class="table">
+  <thead><tr><th>#</th><th>Độc giả</th><th>Sách</th><th>Yêu cầu lúc</th><th>Hạn trả</th><th>Trạng thái</th><th class="text-right">Thao tác</th></tr></thead>
+  <tbody>
+  {% for l in loans %}
+  <tr>
+    <td class="muted">{{ l.id }}</td>
+    <td><b>{{ l.user.full_name }}</b><div class="small muted">{{ l.user.student_code or l.user.username }}</div></td>
+    <td><b>{{ l.book.title }}</b><div class="small muted">Còn {{ l.book.available_copies }} bản</div></td>
+    <td>{{ l.requested_at|dt }}</td>
+    <td>{{ l.due_date.strftime('%d/%m/%Y') if l.due_date else '—' }}{% if l.is_overdue %}<div class="small" style="color:var(--danger)">trễ {{ l.overdue_days }} ngày · {{ l.current_fine|vnd }}</div>{% endif %}</td>
+    <td>{{ status_badge(l) }}</td>
+    <td><div class="row-actions">
+      {% if l.status == 'pending' %}
+        <form method="post" action="{{ url_for('admin.loan_approve', loan_id=l.id) }}">{{ csrf() }}<button class="btn btn-success btn-sm">{{ icon('check') }} Duyệt</button></form>
+        <form method="post" action="{{ url_for('admin.loan_reject', loan_id=l.id) }}">{{ csrf() }}
+          <input name="reason" class="input" placeholder="Lý do từ chối" aria-label="Lý do từ chối"><button class="btn btn-danger btn-sm">Từ chối</button></form>
+      {% elif l.status == 'borrowing' %}
+        <form method="post" action="{{ url_for('admin.loan_return', loan_id=l.id) }}" data-confirm="Xác nhận đã nhận lại cuốn “{{ l.book.title }}”{{ ' (sẽ tính phạt ' ~ (l.current_fine|vnd) ~ ')' if l.is_overdue }}?">{{ csrf() }}<button class="btn btn-primary btn-sm">Nhận trả</button></form>
+      {% endif %}
+    </div></td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% else %}<div class="card">{{ empty('✅', 'Không có dữ liệu', 'Chưa có lượt mượn nào ở mục này.') }}</div>{% endif %}
+{% endblock %}

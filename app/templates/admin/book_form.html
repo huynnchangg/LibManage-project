@@ -1,0 +1,23 @@
+{% extends "admin/_layout.html" %}
+{% from "macros.html" import csrf, icon %}
+{% block title %}{{ 'Sửa sách' if book.id else 'Thêm sách' }}{% endblock %}
+{% block admin_content %}
+{% set f = request.form if request.method == 'POST' else book %}
+<div class="page-head" data-reveal><div><span class="eyebrow">{{ icon('book') }} Kho sách</span><h1 class="mt-1">{{ 'Sửa sách' if book.id else 'Thêm sách mới' }}</h1></div></div>
+<form method="post" class="card card-pad" data-reveal>{{ csrf() }}
+  <div class="form-grid">
+    <div class="field col-8"><label>Tên sách *</label><input name="title" class="input" required value="{{ f.title or '' }}"></div>
+    <div class="field col-4"><label>ISBN</label><input name="isbn" class="input" value="{{ f.isbn or '' }}"></div>
+    <div class="field col-6"><label>Tác giả *</label><input name="author" class="input" required value="{{ f.author or '' }}"></div>
+    <div class="field col-6"><label>Nhà xuất bản</label><input name="publisher" class="input" value="{{ f.publisher or '' }}"></div>
+    <div class="field col-4"><label>Thể loại</label>
+      <select name="category_id" class="select"><option value="">— Chưa phân loại —</option>
+        {% for c in categories %}<option value="{{ c.id }}" {{ 'selected' if (f.category_id|string) == c.id|string }}>{{ c.name }}</option>{% endfor %}
+      </select></div>
+    <div class="field col-4"><label>Năm xuất bản</label><input name="year" type="number" class="input" value="{{ f.year or '' }}"></div>
+    <div class="field col-4"><label>Tổng số bản *</label><input name="total_copies" type="number" min="0" class="input" required value="{{ f.total_copies if f.total_copies is not none else 1 }}"></div>
+    <div class="field col-12"><label>Mô tả</label><textarea name="description" rows="4" class="textarea">{{ f.description or '' }}</textarea></div>
+  </div>
+  <div class="flex gap-1 mt-3"><button class="btn btn-primary">{{ icon('check') }} Lưu</button><a class="btn btn-ghost" href="{{ url_for('admin.books') }}">Huỷ</a></div>
+</form>
+{% endblock %}

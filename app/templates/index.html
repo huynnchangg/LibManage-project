@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% from "macros.html" import csrf, icon, cover, meter, pager, empty %}
+{% block title %}Tra cứu sách{% endblock %}
+{% block content %}
+{% set filtering = request.args.q or request.args.category or request.args.available %}
+{% set fq = request.args.get('q') or None %}{% set fc = request.args.get('category') or None %}{% set fa = request.args.get('available') or None %}
+{% set params = {'q': fq, 'category': fc, 'available': fa} %}
+
+{# ================= HERO ================= #}
+<section class="hero {{ 'slim' if filtering }}">
+  <div class="blob b1"></div><div class="blob b2"></div>
+  <div class="hero-grid">
+    <div>
+      <span class="eyebrow"><span class="dot"></span> Thư viện số · Mở cửa 24/7</span>
+      {% if filtering %}
+        <h1>Kết quả tìm kiếm <span class="gradient-text">{{ pagination.total }} đầu sách</span></h1>
+      {% else %}
+        <h1>Tìm sách hay,<br>mượn trả <span class="gradient-text">nhanh gọn hơn</span></h1>
+        <p class="lead">Tra cứu hàng nghìn đầu sách, gửi yêu cầu mượn chỉ với một cú nhấp và theo dõi hạn trả ngay trên điện thoại.</p>
+      {% endif %}
+      <div class="search-box" data-live-search>
+        <form method="get" action="{{ url_for('main.index') }}" autocomplete="off">
+          <span class="muted">{{ icon('search') }}</span>
+          <input type="search" name="q" value="{{ request.args.q or '' }}" placeholder="Tìm theo tên sách, tác giả, ISBN…" aria-label="Tìm kiếm sách">
+          {% if request.args.category %}<input type="hidden" name="category" value="{{ request.args.category }}">{% endif %}
+          {% if request.args.available %}<input type="hidden" name="available" value="{{ request.args.available }}">{% endif %}
+          <button class="btn btn-primary">Tìm kiếm</button>
+        </form>
+        <div class="suggest" role="listbox"></div>
+      </div>
+      {% if not filtering %}
+      <div class="hero-tags">
+        <span class="muted small" style="align-self:center">Gợi ý:</span>
+        {% for c in categories[:4] %}<a class="chip" href="{{ url_for('main.index', category=c.id) }}">{{ c.name }}</a>{% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% if not filtering %}
+    <div class="hero-art" aria-hidden="true">
+      {% for b in pagination.items[:3] %}{{ cover(b) }}{% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {% if not filtering %}
+  <div class="stats-strip" data-stagger>
+    <div class="stat" data-reveal><b data-count="{{ stats.titles }}">{{ stats.titles }}</b><span>Đầu sách</span></div>
+    <div class="stat" data-reveal><b data-count="{{ stats.copies }}">{{ stats.copies }}</b><span>Bản sách trong kho</span></div>
+    <div class="stat" data-reveal><b data-count="{{ stats.readers }}">{{ stats.readers }}</b><span>Độc giả</span></div>
+    <div class="stat" data-reveal><b data-count="{{ stats.categories }}">{{ stats.categories }}</b><span>Thể loại</span></div>
+  </div>
+  {% endif %}
+</section>
+
+{# ================= KHO SÁCH ================= #}
+<section id="books">
+  <div class="section-head" data-reveal>
+    <div><span class="eyebrow">Kho sách</span><h2 class="mt-1">{{ 'Kết quả phù hợp' if filtering else 'Khám phá kho sách' }}</h2></div>
+    {% if filtering %}<a class="btn btn-ghost btn-sm" href="{{ url_for('main.index') }}">{{ icon('x') }} Xoá bộ lọc</a>{% endif %}
+  </div>
+
+  <div class="toolbar" data-reveal>
+    <a class="chip {{ 'active' if not request.args.category }}" href="{{ url_for('main.index', q=fq, available=fa) }}#books">Tất cả</a>
+    {% for c in categories %}
+      <a class="chip {{ 'active' if request.args.category == c.id|string }}" href="{{ url_for('main.index', q=fq, category=c.id, available=fa) }}#books">{{ c.name }}</a>
+    {% endfor %}
+    {% set on = request.args.available == '1' %}
+    <a class="switch {{ 'on' if on }}" href="{{ url_for('main.index', q=fq, category=fc, available=(None if on else 1)) }}#books"><i></i>Chỉ sách còn bản</a>
+  </div>
+
+  {% if pagination.items %}
+  <div class="book-grid" data-stagger>
+    {% for b in pagination.items %}
+    <article class="book-card" data-reveal data-tilt="6">
+      {{ cover(b) }}
+      <div>
+        <span class="badge badge-primary badge-plain">{{ b.category.name if b.category else 'Chưa phân loại' }}</span>
+        <h3 class="mt-1"><a href="{{ url_for('main.book_detail', book_id=b.id) }}">{{ b.title }}</a></h3>
+        <div class="author">{{ b.author }}{% if b.year %} · {{ b.year }}{% endif %}</div>
+      </div>
+      {{ meter(b) }}
+      <div class="actions">
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('main.book_detail', book_id=b.id) }}">Chi tiết</a>
+        {% if current_user.is_authenticated and not current_user.is_admin %}
+        <form method="post" action="{{ url_for('main.borrow', book_id=b.id) }}">{{ csrf() }}
+          <button class="btn btn-primary btn-sm" {{ 'disabled' if b.available_copies < 1 }}>Mượn sách</button>
+        </form>
+        {% elif not current_user.is_authenticated %}
+        <a class="btn btn-primary btn-sm" href="{{ url_for('auth.login', next=url_for('main.book_detail', book_id=b.id)) }}">Đăng nhập để mượn</a>
+        {% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {{ pager(pagination, 'main.index', params) }}
+  {% else %}
+  <div class="card">{{ empty('🔍', 'Không tìm thấy sách phù hợp', 'Thử từ khoá khác hoặc bỏ bớt bộ lọc.') }}</div>
+  {% endif %}
+</section>
+
+{# ================= QUY TRÌNH ================= #}
+{% if not filtering %}
+<section class="mt-4" style="margin-top:72px">
+  <div class="section-head" data-reveal><div><span class="eyebrow">Quy trình</span><h2 class="mt-1">Mượn sách chỉ với 4 bước</h2></div></div>
+  <div class="steps" data-stagger>
+    <div class="card step" data-reveal><div class="step-num">1</div><h3>Tìm sách</h3><p>Tra cứu theo tên, tác giả hoặc thể loại, xem ngay số bản còn trong kho.</p></div>
+    <div class="card step" data-reveal><div class="step-num">2</div><h3>Gửi yêu cầu</h3><p>Hệ thống tự kiểm tra điều kiện mượn: nợ phạt, sách quá hạn, giới hạn số cuốn.</p></div>
+    <div class="card step" data-reveal><div class="step-num">3</div><h3>Thủ thư duyệt</h3><p>Thủ thư duyệt hoặc từ chối. Khi duyệt, số bản trong kho tự động giảm.</p></div>
+    <div class="card step" data-reveal><div class="step-num">4</div><h3>Nhận &amp; trả sách</h3><p>Theo dõi hạn trả, gia hạn online. Trả muộn sẽ bị tính phí theo ngày.</p></div>
+  </div>
+</section>
+
+{% if not current_user.is_authenticated %}
+<section class="cta" data-reveal="zoom">
+  <h2>Sẵn sàng mượn cuốn sách đầu tiên?</h2>
+  <p>Đăng ký tài khoản độc giả miễn phí và bắt đầu khám phá kho sách của thư viện.</p>
+  <a class="btn btn-light btn-lg" href="{{ url_for('auth.register') }}">Đăng ký miễn phí {{ icon('arrow') }}</a>
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}

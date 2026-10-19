@@ -1,0 +1,32 @@
+{% extends "admin/_layout.html" %}
+{% from "macros.html" import csrf, icon, pager, empty %}
+{% block title %}Quản lý sách{% endblock %}
+{% block admin_content %}
+<div class="page-head" data-reveal>
+  <div><span class="eyebrow">{{ icon('book') }} Kho sách</span><h1 class="mt-1">Quản lý sách</h1></div>
+  <a class="btn btn-primary" href="{{ url_for('admin.book_new') }}">{{ icon('plus') }} Thêm sách</a>
+</div>
+<form class="toolbar" method="get" data-reveal>
+  <input name="q" value="{{ request.args.q or '' }}" class="input" style="max-width:380px" placeholder="Tìm theo tên, tác giả, ISBN…">
+  <button class="btn btn-ghost">{{ icon('search') }} Tìm</button>
+</form>
+{% if pagination.items %}
+<div class="table-wrap" data-reveal><table class="table">
+  <thead><tr><th>Tên sách</th><th>Tác giả</th><th>Thể loại</th><th>Sẵn có / Tổng</th><th class="text-right">Thao tác</th></tr></thead>
+  <tbody>
+  {% for b in pagination.items %}
+  <tr>
+    <td><b>{{ b.title }}</b></td><td>{{ b.author }}</td>
+    <td>{% if b.category %}<span class="badge badge-primary badge-plain">{{ b.category.name }}</span>{% else %}—{% endif %}</td>
+    <td><b style="color:var(--{{ 'danger' if b.available_copies < 1 else 'success' }})">{{ b.available_copies }}</b> / {{ b.total_copies }}</td>
+    <td><div class="row-actions">
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.book_edit', book_id=b.id) }}">{{ icon('edit') }} Sửa</a>
+      <form method="post" action="{{ url_for('admin.book_delete', book_id=b.id) }}" data-confirm="Xoá sách “{{ b.title }}”? Thao tác này không thể hoàn tác.">{{ csrf() }}<button class="btn btn-danger btn-sm">{{ icon('trash') }} Xoá</button></form>
+    </div></td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{{ pager(pagination, 'admin.books', {'q': request.args.get('q') or None}) }}
+{% else %}<div class="card">{{ empty('📚', 'Chưa có sách', 'Bấm “Thêm sách” để bắt đầu.') }}</div>{% endif %}
+{% endblock %}

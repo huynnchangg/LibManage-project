@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% from "macros.html" import csrf, icon, cover, status_badge, empty %}
+{% block title %}Sách của tôi{% endblock %}
+{% block content %}
+{% set n_borrow = loans|selectattr('status','equalto','borrowing')|list|length %}
+{% set n_pending = loans|selectattr('status','equalto','pending')|list|length %}
+{% set n_late = loans|selectattr('is_overdue')|list|length %}
+
+<div class="page-head" data-reveal>
+  <div><span class="eyebrow">{{ icon('loans') }} Thư viện cá nhân</span><h1 class="mt-1">Sách của tôi</h1></div>
+  <a class="btn btn-primary" href="{{ url_for('main.index') }}">{{ icon('plus') }} Mượn thêm sách</a>
+</div>
+
+{% if unpaid %}
+<div class="alert alert-danger" data-reveal>{{ icon('alert') }}<div>Bạn còn <b>{{ unpaid|vnd }}</b> tiền phạt chưa nộp. Vui lòng thanh toán tại quầy thủ thư để tiếp tục mượn sách.</div></div>
+{% endif %}
+
+<div class="summary" data-stagger>
+  <div class="card sum-card" data-reveal><div class="sum-ico tone-primary">{{ icon('book') }}</div><div><b data-count="{{ n_borrow }}">{{ n_borrow }}</b><span>Đang mượn</span></div></div>
+  <div class="card sum-card" data-reveal><div class="sum-ico tone-warning">{{ icon('clock') }}</div><div><b data-count="{{ n_pending }}">{{ n_pending }}</b><span>Chờ duyệt</span></div></div>
+  <div class="card sum-card" data-reveal><div class="sum-ico tone-danger">{{ icon('alert') }}</div><div><b data-count="{{ n_late }}">{{ n_late }}</b><span>Quá hạn</span></div></div>
+  <div class="card sum-card" data-reveal><div class="sum-ico tone-success">{{ icon('coins') }}</div><div><b style="font-size:1.25rem">{{ unpaid|vnd }}</b><span>Tiền phạt chưa nộp</span></div></div>
+</div>
+
+{% if loans %}
+<div class="tabs" role="tablist">
+  <button class="tab active" data-filter="all">Tất cả ({{ loans|length }})</button>
+  <button class="tab" data-filter="borrowing">Đang mượn</button>
+  <button class="tab" data-filter="pending">Chờ duyệt</button>
+  <button class="tab" data-filter="done">Lịch sử</button>
+</div>
+
+<div class="loan-list" data-stagger>
+  {% for l in loans %}
+  {% set group = 'borrowing' if l.status == 'borrowing' else 'pending' if l.status == 'pending' else 'done' %}
+  <article class="card loan-card" data-reveal data-group="{{ group }}"
+    {% if l.status == 'borrowing' and l.due_date %}data-due="{{ l.due_date.isoformat() }}" data-start="{{ l.approved_at.isoformat() if l.approved_at }}"{% endif %}>
+    {{ cover(l.book) }}
+    <div class="loan-info">
+      <div class="flex items-center gap-1 wrap">
+        <h3><a href="{{ url_for('main.book_detail', book_id=l.book_id) }}" style="color:inherit">{{ l.book.title }}</a></h3>
+        {{ status_badge(l) }}
+      </div>
+      <div class="muted small">{{ l.book.author }}</div>
+      <div class="loan-meta">
+        <span>Yêu cầu: {{ l.requested_at|dt('%d/%m/%Y') }}</span>
+        {% if l.due_date %}<span>Hạn trả: <b>{{ l.due_date.strftime('%d/%m/%Y') }}</b></span>{% endif %}
+        {% if l.returned_at %}<span>Đã trả: {{ l.returned_at|dt('%d/%m/%Y') }}</span>{% endif %}
+        {% if l.current_fine %}<span style="color:var(--{{ 'success' if l.fine_paid else 'danger' }});font-weight:600">Phạt: {{ l.current_fine|vnd }}{{ ' (đã nộp)' if l.fine_paid }}</span>{% endif %}
+      </div>
+      {% if l.status == 'rejected' and l.note %}<div class="small mt-1" style="color:var(--danger)">Lý do từ chối: {{ l.note }}</div>{% endif %}
+      {% if l.status == 'borrowing' and l.due_date %}
+        <div class="due {{ 'late' if l.is_overdue }}"><div class="due-bar"><i style="--p:{{ 100 if l.is_overdue else 0 }}"></i></div>
+          <div class="due-text">{% if l.is_overdue %}Quá hạn {{ l.overdue_days }} ngày{% else %}Đến hạn {{ l.due_date.strftime('%d/%m/%Y') }}{% endif %}</div></div>
+      {% endif %}
+    </div>
+    <div class="loan-actions">
+      {% if l.status == 'pending' %}
+        <form method="post" action="{{ url_for('main.cancel', loan_id=l.id) }}" data-confirm="Bạn muốn huỷ yêu cầu mượn “{{ l.book.title }}”?">{{ csrf() }}<button class="btn btn-ghost btn-sm">{{ icon('x') }} Huỷ yêu cầu</button></form>
+      {% elif l.status == 'borrowing' and not l.is_overdue %}
+        <form method="post" action="{{ url_for('main.renew', loan_id=l.id) }}">{{ csrf() }}<button class="btn btn-primary btn-sm">{{ icon('refresh') }} Gia hạn</button></form>
+      {% endif %}
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card">{{ empty('📚', 'Bạn chưa mượn cuốn sách nào', 'Hãy tra cứu và gửi yêu cầu mượn cuốn sách đầu tiên.') }}<div class="center" style="padding-bottom:36px"><a class="btn btn-primary" href="{{ url_for('main.index') }}">Tra cứu sách</a></div></div>
+{% endif %}
+{% endblock %}

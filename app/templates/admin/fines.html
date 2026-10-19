@@ -1,0 +1,19 @@
+{% extends "admin/_layout.html" %}
+{% from "macros.html" import csrf, icon, empty %}
+{% block title %}Tiền phạt{% endblock %}
+{% block admin_content %}
+<div class="page-head" data-reveal><div><span class="eyebrow">{{ icon('coins') }} Tài chính</span><h1 class="mt-1">Quản lý tiền phạt</h1></div></div>
+{% if loans %}
+<div class="table-wrap" data-reveal><table class="table">
+  <thead><tr><th>Độc giả</th><th>Sách</th><th>Ngày trả</th><th>Số tiền</th><th>Trạng thái</th><th></th></tr></thead>
+  {% for l in loans %}
+  <tr>
+    <td><b>{{ l.user.full_name }}</b><div class="small muted">{{ l.user.student_code or l.user.username }}</div></td>
+    <td>{{ l.book.title }}</td><td>{{ l.returned_at|dt }}</td><td><b>{{ l.fine_amount|vnd }}</b></td>
+    <td>{% if l.fine_paid %}<span class="badge badge-success">Đã thu</span>{% else %}<span class="badge badge-danger">Chưa thu</span>{% endif %}</td>
+    <td><div class="row-actions">{% if not l.fine_paid %}<form method="post" action="{{ url_for('admin.fine_pay', loan_id=l.id) }}" data-confirm="Xác nhận đã thu {{ l.fine_amount|vnd }} của {{ l.user.full_name }}?">{{ csrf() }}<button class="btn btn-success btn-sm">{{ icon('check') }} Thu tiền</button></form>{% endif %}</div></td>
+  </tr>
+  {% endfor %}
+</table></div>
+{% else %}<div class="card">{{ empty('🎉', 'Chưa có khoản phạt nào') }}</div>{% endif %}
+{% endblock %}
