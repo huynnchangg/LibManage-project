@@ -6,3 +6,22 @@ dist/
 htmlcov/
 .tox/
 docs/_build/
+
+# Database & runtime
+instance/
+*.db
+*.sqlite3
+
+# CSV data (qua lon de commit)
+*.csv
+
+# Python
+*.pyc
+*.pyo
+venv/
+.venv/
+env/
+
+# OS
+.DS_Store
+Thumbs.db
