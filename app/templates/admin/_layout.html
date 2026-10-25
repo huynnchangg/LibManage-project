@@ -9,7 +9,7 @@
     <a class="side-link {{ 'active' if ep == 'admin.loans' }}" href="{{ url_for('admin.loans') }}">{{ icon('loans') }} Mượn trả</a>
     <a class="side-link {{ 'active' if ep in ('admin.books','admin.book_new','admin.book_edit') }}" href="{{ url_for('admin.books') }}">{{ icon('book') }} Quản lý sách</a>
     <a class="side-link {{ 'active' if ep == 'admin.categories' }}" href="{{ url_for('admin.categories') }}">{{ icon('layers') }} Thể loại</a>
-    <a class="side-link {{ 'active' if ep == 'admin.users' }}" href="{{ url_for('admin.users') }}">{{ icon('users') }} Độc giả</a>
+    <a class="side-link {{ 'active' if ep in ('admin.users','admin.user_detail') }}" href="{{ url_for('admin.users') }}">{{ icon('users') }} Độc giả</a>
     <a class="side-link {{ 'active' if ep == 'admin.fines' }}" href="{{ url_for('admin.fines') }}">{{ icon('coins') }} Tiền phạt</a>
   </aside>
   <section>{% block admin_content %}{% endblock %}</section>

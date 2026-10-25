@@ -117,6 +117,17 @@ def users():
     return render_template("admin/users.html", users=query.order_by(User.full_name).all())
 
 
+@bp.route("/users/<int:user_id>")
+@admin_required
+def user_detail(user_id):
+    user = User.query.get_or_404(user_id)
+    if user.is_admin:
+        abort(403)
+    loans = Loan.query.filter_by(user_id=user.id).order_by(Loan.requested_at.desc()).all()
+    unpaid = sum(l.fine_amount for l in loans if l.fine_amount and not l.fine_paid)
+    return render_template("admin/user_detail.html", user=user, loans=loans, unpaid=unpaid)
+
+
 @bp.route("/users/<int:user_id>/toggle", methods=["POST"])
 @admin_required
 def user_toggle(user_id):

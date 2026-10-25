@@ -1,0 +1,119 @@
+{% extends "admin/_layout.html" %}
+{% from "macros.html" import csrf, icon, status_badge, empty %}
+{% block title %}{{ user.full_name }} – Chi tiết độc giả{% endblock %}
+{% block admin_content %}
+
+{# ── Tiêu đề trang ── #}
+<div class="page-head" data-reveal>
+  <div>
+    <span class="eyebrow">
+      <a href="{{ url_for('admin.users') }}" style="color:inherit">{{ icon('users') }} Độc giả</a>
+      &rsaquo; Chi tiết
+    </span>
+    <h1 class="mt-1">{{ user.full_name }}</h1>
+  </div>
+  <div class="row-actions">
+    <form method="post" action="{{ url_for('admin.user_toggle', user_id=user.id) }}"
+      {% if user.active %}data-confirm="Khoá tài khoản {{ user.username }}? Người này sẽ không đăng nhập được."{% endif %}>
+      {{ csrf() }}
+      <button class="btn {{ 'btn-danger' if user.active else 'btn-success' }}">
+        {{ icon('x') if user.active else icon('check') }}
+        {{ 'Khoá tài khoản' if user.active else 'Mở khoá tài khoản' }}
+      </button>
+    </form>
+  </div>
+</div>
+
+{# ── Thông tin cá nhân ── #}
+<div class="card" data-reveal style="margin-bottom:1.5rem">
+  <div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap">
+    <span class="avatar" style="width:3.5rem;height:3.5rem;font-size:1.5rem;flex-shrink:0">
+      {{ user.full_name[:1]|upper }}
+    </span>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:1.1rem;font-weight:600">{{ user.full_name }}</div>
+      <div class="small muted">@{{ user.username }}</div>
+    </div>
+    <div>
+      {% if user.active %}
+        <span class="badge badge-success">Hoạt động</span>
+      {% else %}
+        <span class="badge badge-secondary">Bị khoá</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <hr style="margin:1rem 0;border:none;border-top:1px solid var(--border)">
+
+  <dl style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.6rem 1.5rem;margin:0">
+    <div><dt class="small muted">Email</dt><dd>{{ user.email }}</dd></div>
+    <div><dt class="small muted">Mã sinh viên</dt><dd>{{ user.student_code or '—' }}</dd></div>
+    <div><dt class="small muted">Ngày tạo tài khoản</dt>
+      <dd>{{ user.created_at.strftime('%d/%m/%Y') if user.created_at else '—' }}</dd></div>
+    <div><dt class="small muted">Tiền phạt chưa nộp</dt>
+      <dd style="{{ 'color:var(--danger);font-weight:600' if unpaid }}">
+        {{ unpaid|vnd if unpaid else '0 đ' }}
+      </dd>
+    </div>
+  </dl>
+</div>
+
+{# ── Lịch sử mượn ── #}
+<div class="page-head" data-reveal style="margin-bottom:.75rem">
+  <div><h2 style="font-size:1.1rem;font-weight:600">{{ icon('loans') }} Lịch sử mượn</h2></div>
+  <div class="small muted">{{ loans|length }} lượt</div>
+</div>
+
+{% if loans %}
+<div class="table-wrap" data-reveal>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Sách</th>
+        <th>Yêu cầu lúc</th>
+        <th>Hạn trả</th>
+        <th>Trạng thái</th>
+        <th class="text-right">Tiền phạt</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for l in loans %}
+    <tr>
+      <td class="muted">{{ l.id }}</td>
+      <td>
+        <b>{{ l.book.title }}</b>
+        <div class="small muted">{{ l.book.author }}</div>
+      </td>
+      <td>{{ l.requested_at|dt }}</td>
+      <td>
+        {{ l.due_date.strftime('%d/%m/%Y') if l.due_date else '—' }}
+        {% if l.is_overdue %}
+          <div class="small" style="color:var(--danger)">trễ {{ l.overdue_days }} ngày</div>
+        {% endif %}
+      </td>
+      <td>{{ status_badge(l) }}</td>
+      <td class="text-right">
+        {% if l.fine_amount %}
+          <span class="{{ 'muted' if l.fine_paid else '' }}" style="{{ '' if l.fine_paid else 'color:var(--danger)' }}">
+            {{ l.fine_amount|vnd }}
+          </span>
+          {% if l.fine_paid %}
+            <div class="small muted">Đã thu</div>
+          {% else %}
+            <div class="small" style="color:var(--danger)">Chưa thu</div>
+          {% endif %}
+        {% else %}
+          <span class="muted">—</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card">{{ empty('📚', 'Chưa có lượt mượn nào', 'Độc giả này chưa từng gửi yêu cầu mượn sách.') }}</div>
+{% endif %}
+
+{% endblock %}

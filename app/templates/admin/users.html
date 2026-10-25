@@ -16,9 +16,11 @@
     <td>{{ u.student_code or '—' }}</td><td>{{ u.email }}</td>
     <td>{{ u.loans|selectattr('status','equalto','borrowing')|list|length }}</td>
     <td>{% if u.active %}<span class="badge badge-success">Hoạt động</span>{% else %}<span class="badge badge-secondary">Bị khoá</span>{% endif %}</td>
-    <td><div class="row-actions"><form method="post" action="{{ url_for('admin.user_toggle', user_id=u.id) }}"
+    <td><div class="row-actions">
+      <a class="btn btn-sm btn-ghost" href="{{ url_for('admin.user_detail', user_id=u.id) }}">{{ icon('user') }} Chi tiết</a>
+      <form method="post" action="{{ url_for('admin.user_toggle', user_id=u.id) }}"
         {% if u.active %}data-confirm="Khoá tài khoản {{ u.username }}? Người này sẽ không đăng nhập được."{% endif %}>{{ csrf() }}
-      <button class="btn btn-sm {{ 'btn-danger' if u.active else 'btn-success' }}">{{ 'Khoá' if u.active else 'Mở khoá' }}</button></form></div></td>
+        <button class="btn btn-sm {{ 'btn-danger' if u.active else 'btn-success' }}">{{ 'Khoá' if u.active else 'Mở khoá' }}</button></form></div></td>
   </tr>
   {% endfor %}
 </table></div>
