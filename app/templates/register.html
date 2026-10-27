@@ -3,9 +3,8 @@
 {% block title %}Đăng ký{% endblock %}
 {% block content %}
 <div class="auth-wrap">
-  <div class="blob b1" style="top:10%;left:5%;right:auto"></div><div class="blob b2" style="bottom:5%;right:5%;left:auto"></div>
   <div class="card auth-card wide" data-reveal="zoom">
-    <span class="eyebrow">{{ icon('user') }} Độc giả mới</span>
+    <span class="eyebrow-tag">{{ icon('user') }} Độc giả mới</span>
     <h2 class="mt-2">Tạo tài khoản thư viện</h2>
     <p class="muted">Chỉ mất một phút để bắt đầu mượn sách.</p>
     <form method="post">{{ csrf() }}

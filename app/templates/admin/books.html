@@ -3,30 +3,92 @@
 {% block title %}Quản lý sách{% endblock %}
 {% block admin_content %}
 <div class="page-head" data-reveal>
-  <div><span class="eyebrow">{{ icon('book') }} Kho sách</span><h1 class="mt-1">Quản lý sách</h1></div>
-  <a class="btn btn-primary" href="{{ url_for('admin.book_new') }}">{{ icon('plus') }} Thêm sách</a>
+  <div>
+    <span class="eyebrow">{{ icon('book') }} Quản trị tài liệu</span>
+    <h1 class="mt-1">Quản lý kho sách</h1>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('admin.book_new') }}">{{ icon('plus') }} Thêm sách mới</a>
 </div>
-<form class="toolbar" method="get" data-reveal>
-  <input name="q" value="{{ request.args.q or '' }}" class="input" style="max-width:380px" placeholder="Tìm theo tên, tác giả, ISBN…">
-  <button class="btn btn-ghost">{{ icon('search') }} Tìm</button>
-</form>
+
+<div class="admin-toolbar" data-reveal>
+  <form class="search-form-admin" method="get">
+    <span class="search-icon">{{ icon('search') }}</span>
+    <input name="q" value="{{ request.args.q or '' }}" class="input input-search-admin" placeholder="Tìm kiếm theo tên sách, tác giả, ISBN…">
+    <button class="btn btn-search-admin" type="submit">Tìm kiếm</button>
+    {% if request.args.q %}
+    <a class="btn btn-reset-search" href="{{ url_for('admin.books') }}">{{ icon('x') }} Đặt lại</a>
+    {% endif %}
+  </form>
+</div>
+
 {% if pagination.items %}
-<div class="table-wrap" data-reveal><table class="table">
-  <thead><tr><th>Tên sách</th><th>Tác giả</th><th>Thể loại</th><th>Sẵn có / Tổng</th><th class="text-right">Thao tác</th></tr></thead>
-  <tbody>
-  {% for b in pagination.items %}
-  <tr>
-    <td><b>{{ b.title }}</b></td><td>{{ b.author }}</td>
-    <td>{% if b.category %}<span class="badge badge-primary badge-plain">{{ b.category.name }}</span>{% else %}—{% endif %}</td>
-    <td><b style="color:var(--{{ 'danger' if b.available_copies < 1 else 'success' }})">{{ b.available_copies }}</b> / {{ b.total_copies }}</td>
-    <td><div class="row-actions">
-      <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.book_edit', book_id=b.id) }}">{{ icon('edit') }} Sửa</a>
-      <form method="post" action="{{ url_for('admin.book_delete', book_id=b.id) }}" data-confirm="Xoá sách “{{ b.title }}”? Thao tác này không thể hoàn tác.">{{ csrf() }}<button class="btn btn-danger btn-sm">{{ icon('trash') }} Xoá</button></form>
-    </div></td>
-  </tr>
-  {% endfor %}
-  </tbody>
-</table></div>
+<div class="table-wrap" data-reveal>
+  <table class="table table-books">
+    <thead>
+      <tr>
+        <th class="col-stt">STT</th>
+        <th style="min-width: 240px;">Thông tin ấn bản</th>
+        <th style="min-width: 140px;">Chuyên mục / Thể loại</th>
+        <th style="min-width: 130px;">Tình trạng kho</th>
+        <th style="min-width: 110px;">Vị trí lưu</th>
+        <th class="text-right" style="min-width: 170px; padding-right: 20px;">Thao tác</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for b in pagination.items %}
+    <tr>
+      <td class="col-stt muted">{{ (pagination.page - 1) * pagination.per_page + loop.index }}</td>
+      <td>
+        <div class="book-media-cell">
+          <div class="book-mini-cover">
+            {% if b.cover_url %}
+              <img src="{{ b.cover_url }}" alt="" loading="lazy" onerror="this.parentElement.innerHTML='<span class=\'fallback-ico\'>📖</span>'">
+            {% else %}
+              <span class="fallback-ico">📖</span>
+            {% endif %}
+          </div>
+          <div class="book-info-col">
+            <div class="book-admin-title">
+              <a href="{{ url_for('main.book_detail', book_id=b.id) }}" target="_blank" title="Xem trang độc giả"><b>{{ b.title }}</b></a>
+            </div>
+            <div class="small muted">{{ b.author }}{% if b.year %} · {{ b.year }}{% endif %}{% if b.isbn %} · ISBN: {{ b.isbn }}{% endif %}</div>
+          </div>
+        </div>
+      </td>
+      <td>
+        {% if b.category %}
+          <span class="badge badge-category">
+            <span class="category-dot"></span>{{ b.category.name }}
+          </span>
+        {% else %}
+          <span class="badge badge-secondary">Chưa phân loại</span>
+        {% endif %}
+      </td>
+      <td>
+        <div class="stock-pill {{ 'stock-ok' if b.available_copies > 0 else 'stock-out' }}">
+          <span class="stock-dot"></span>
+          <b>{{ b.available_copies }}</b> / {{ b.total_copies }} bản
+        </div>
+      </td>
+      <td>
+        <span class="location-tag">{{ b.location or 'Kho tổng hợp' }}</span>
+      </td>
+      <td class="text-right">
+        <div class="row-actions">
+          <a class="btn btn-ghost btn-sm btn-action-book" href="{{ url_for('admin.book_edit', book_id=b.id) }}" title="Chỉnh sửa thông tin">{{ icon('edit') }} Sửa</a>
+          <form method="post" action="{{ url_for('admin.book_delete', book_id=b.id) }}" data-confirm="Xác nhận xoá sách “{{ b.title }}”? Thao tác này sẽ xoá vĩnh viễn sách khỏi hệ thống.">
+            {{ csrf() }}
+            <button class="btn btn-danger btn-sm btn-action-book" title="Xóa sách">{{ icon('trash') }} Xóa</button>
+          </form>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
 {{ pager(pagination, 'admin.books', {'q': request.args.get('q') or None}) }}
-{% else %}<div class="card">{{ empty('📚', 'Chưa có sách', 'Bấm “Thêm sách” để bắt đầu.') }}</div>{% endif %}
+{% else %}
+<div class="card empty-card">{{ empty('📚', 'Chưa có ấn bản phù hợp', 'Bấm “Thêm sách mới” hoặc tìm kiếm với từ khóa khác.') }}</div>
+{% endif %}
 {% endblock %}

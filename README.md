@@ -26,6 +26,7 @@ Quy tắc ràng buộc (xem `app/config.py`):
 | `MAX_RENEWALS` | 1 lần | Số lần gia hạn tối đa |
 | `MAX_ACTIVE_LOANS` | 5 cuốn | Số sách đang mượn + chờ duyệt đồng thời |
 | `FINE_PER_DAY` | 5.000 đ | Phạt mỗi ngày quá hạn |
+| `PER_PAGE` | 12 mục | Số sách/bản ghi hiển thị mỗi trang |
 
 Không mượn thêm khi còn sách quá hạn hoặc còn nợ phạt; không mượn trùng sách; hết bản thì không duyệt.
 
@@ -133,16 +134,18 @@ test_flow.py      # kiểm thử tích hợp tự động (hỗ trợ console UT
 requirements.txt  # dependencies đã pin version
 ```
 
-## 9. Giao diện (TV1)
+## 9. Giao diện (TV1 — Tái thiết kế theo Anthropic Editorial Design System)
 
-Không dùng framework CSS ngoài, tự xây design system:
+Không dùng framework CSS ngoài, tự xây design system chuẩn mực học thuật lấy cảm hứng từ tài liệu nghiên cứu trên nền giấy da ấm (warm parchment):
 
-| File | Vai trò |
+| Thành phần | Đặc tả kỹ thuật |
 |---|---|
-| `static/css/style.css` | Biến màu, dark mode, button, card, form, bảng, toast, modal, stat cards, admin profile layout… |
-| `static/js/app.js` | Đếm số động, hiện dần khi cuộn (`data-reveal`), nghiêng 3D card, gợi ý tìm kiếm, toast, hộp xác nhận (`data-confirm`), dark mode |
-| `templates/base.html` | Khung chung: navbar, footer, toast, thẻ noscript dự phòng, thanh tiến độ cuộn |
-| `templates/macros.html` | Reusable components: `icon`, `cover`, `meter`, `pager`, `status_badge`, `empty`, `csrf` |
+| **Bảng màu tự nhiên** | Nền canvas ngà giấy (`#f0eee6`), bề mặt thẻ ấn phẩm (`#faf9f5`), thẻ tiêu điểm Manilla (`#f5e3c7`), viền hairline mỏng (`#cccbc8`), chân trang đen phiến đá trầm (`#141413`). Điểm nhấn hành động duy nhất dùng tông Đất sét nung Clay (`#d97757`, hover `#c6613f`). Không dùng bóng đổ lòe loẹt hay dải màu tech-blue thông thường. |
+| **Typography chuẩn tiếng Việt** | Hệ font kép hỗ trợ Unicode dấu tiếng Việt 100%: **Lora** (Editorial Serif) thể hiện chiều sâu nội dung, tiêu đề tác phẩm và bài viết giới thiệu; **Plus Jakarta Sans** dành riêng cho giao diện điều hướng (UI Chrome, nút bấm, nhãn trạng thái). |
+| **Lưới hiển thị & Phân trang** | Cấu hình `PER_PAGE = 12` sách/trang tương thích tối ưu với hệ thống lưới 4 cột (desktop) / 3 cột (tablet) / 2 cột (mobile) đối xứng hoàn hảo, xóa bỏ hoàn toàn hiện tượng lệch hàng hay các ô trống thừa. Chiều cao bìa sách chuẩn tỷ lệ vàng 2:3 với `object-fit: cover`. |
+| **Trang chi tiết sách** | Bài viết tóm tắt & giới thiệu tác phẩm định dạng typography báo chí học thuật (`line-height: 1.78`, cỡ chữ 18px, drop-cap chữ cái đầu tao nhã, phân đoạn rành mạch, độ dài dòng chuẩn 72 ký tự). |
+| `static/css/style.css` | Hệ thống design tokens, bố cục lưới sách, typography giới thiệu, bảng quản trị, dark mode, modal, toast... |
+| `static/js/app.js` | Gợi ý tìm kiếm tức thì, tải gợi ý sách cùng thể loại qua REST API, animation lật thẻ, đếm số động... |
 
 ## 10. Kiểm thử
 

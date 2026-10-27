@@ -2,7 +2,12 @@
 {% from "macros.html" import csrf, icon, status_badge, empty, pager %}
 {% block title %}Quản lý mượn trả{% endblock %}
 {% block admin_content %}
-<div class="page-head" data-reveal><div><span class="eyebrow">{{ icon('loans') }} Mượn trả</span><h1 class="mt-1">Quản lý mượn trả</h1></div></div>
+<div class="page-head" data-reveal>
+  <div>
+    <span class="eyebrow">{{ icon('loans') }} Quản trị mượn trả</span>
+    <h1 class="mt-1">Quản lý mượn trả sách</h1>
+  </div>
+</div>
 
 <div class="tabs" data-reveal>
   {% for key, label in [('pending','Chờ duyệt'),('borrowing','Đang mượn'),('overdue','Quá hạn'),('returned','Đã trả'),('rejected','Từ chối'),('all','Tất cả')] %}
@@ -11,30 +16,95 @@
 </div>
 
 {% if loans %}
-<div class="table-wrap" data-reveal><table class="table">
-  <thead><tr><th>#</th><th>Độc giả</th><th>Sách</th><th>Yêu cầu lúc</th><th>Hạn trả</th><th>Trạng thái</th><th class="text-right">Thao tác</th></tr></thead>
-  <tbody>
-  {% for l in loans %}
-  <tr>
-    <td class="muted">{{ l.id }}</td>
-    <td><b>{{ l.user.full_name }}</b><div class="small muted">{{ l.user.student_code or l.user.username }}</div></td>
-    <td><b>{{ l.book.title }}</b><div class="small muted">Còn {{ l.book.available_copies }} bản</div></td>
-    <td>{{ l.requested_at|dt }}</td>
-    <td>{{ l.due_date.strftime('%d/%m/%Y') if l.due_date else '—' }}{% if l.is_overdue %}<div class="small" style="color:var(--danger)">trễ {{ l.overdue_days }} ngày · {{ l.current_fine|vnd }}</div>{% endif %}</td>
-    <td>{{ status_badge(l) }}</td>
-    <td><div class="row-actions">
-      {% if l.status == 'pending' %}
-        <form method="post" action="{{ url_for('admin.loan_approve', loan_id=l.id) }}">{{ csrf() }}<button class="btn btn-success btn-sm">{{ icon('check') }} Duyệt</button></form>
-        <form method="post" action="{{ url_for('admin.loan_reject', loan_id=l.id) }}">{{ csrf() }}
-          <input name="reason" class="input" placeholder="Lý do từ chối" aria-label="Lý do từ chối"><button class="btn btn-danger btn-sm">Từ chối</button></form>
-      {% elif l.status == 'borrowing' %}
-        <form method="post" action="{{ url_for('admin.loan_return', loan_id=l.id) }}" data-confirm="Xác nhận đã nhận lại cuốn “{{ l.book.title }}”{{ ' (sẽ tính phạt ' ~ (l.current_fine|vnd) ~ ')' if l.is_overdue }}?">{{ csrf() }}<button class="btn btn-primary btn-sm">Nhận trả</button></form>
-      {% endif %}
-    </div></td>
-  </tr>
-  {% endfor %}
-  </tbody>
-</table></div>
+<div class="table-wrap" data-reveal>
+  <table class="table table-loans">
+    <thead>
+      <tr>
+        <th class="col-stt">STT</th>
+        <th class="col-user">Độc giả</th>
+        <th class="col-book">Sách mượn</th>
+        <th class="col-req">Yêu cầu lúc</th>
+        <th class="col-due">Hạn trả</th>
+        <th class="col-status">Trạng thái</th>
+        <th class="col-actions text-right">Thao tác</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for l in loans %}
+    <tr>
+      <td class="col-stt muted">{{ (pagination.page - 1) * pagination.per_page + loop.index }}</td>
+      <td class="col-user">
+        <div class="user-name"><b>{{ l.user.full_name }}</b></div>
+        <div class="small muted">{{ l.user.student_code or l.user.username }}</div>
+      </td>
+      <td class="col-book">
+        <div class="book-title-cell" title="{{ l.book.title }}"><b>{{ l.book.title }}</b></div>
+        <div class="small muted">Kho còn {{ l.book.available_copies }}/{{ l.book.total_copies }} bản</div>
+      </td>
+      <td class="col-req">{{ l.requested_at|dt }}</td>
+      <td class="col-due">
+        <span class="due-date">{{ l.due_date.strftime('%d/%m/%Y') if l.due_date else '—' }}</span>
+        {% if l.is_overdue %}
+        <div class="small overdue-notice" style="color:var(--color-danger);font-weight:600">trễ {{ l.overdue_days }} ngày · {{ l.current_fine|vnd }}</div>
+        {% endif %}
+      </td>
+      <td class="col-status">{{ status_badge(l) }}</td>
+      <td class="col-actions text-right">
+        <div class="row-actions">
+          {% if l.status == 'pending' %}
+            <form method="post" action="{{ url_for('admin.loan_approve', loan_id=l.id) }}">
+              {{ csrf() }}
+              <button class="btn btn-success btn-sm btn-action-loan" title="Duyệt cho độc giả mượn">{{ icon('check') }} Duyệt</button>
+            </form>
+            <button type="button" class="btn btn-danger btn-sm btn-action-loan btn-open-reject"
+                    data-action="{{ url_for('admin.loan_reject', loan_id=l.id) }}"
+                    data-book="{{ l.book.title }}"
+                    data-user="{{ l.user.full_name }}"
+                    title="Từ chối yêu cầu mượn">
+              {{ icon('x') }} Từ chối
+            </button>
+          {% elif l.status == 'borrowing' %}
+            <form method="post" action="{{ url_for('admin.loan_return', loan_id=l.id) }}" data-confirm="Xác nhận đã nhận lại cuốn “{{ l.book.title }}”{{ ' (sẽ tính phạt ' ~ (l.current_fine|vnd) ~ ')' if l.is_overdue }}?">
+              {{ csrf() }}
+              <button class="btn btn-primary btn-sm btn-action-loan" title="Xác nhận nhận lại sách">{{ icon('loans') }} Nhận trả</button>
+            </form>
+          {% elif l.status == 'returned' %}
+            <span class="badge badge-success badge-plain">Đã trả</span>
+          {% elif l.status == 'rejected' %}
+            <span class="badge badge-danger badge-plain">Từ chối</span>
+          {% else %}
+            <span class="muted small">—</span>
+          {% endif %}
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
 {{ pager(pagination, 'admin.loans', {'status': status}) }}
-{% else %}<div class="card">{{ empty('✅', 'Không có dữ liệu', 'Chưa có lượt mượn nào ở mục này.') }}</div>{% endif %}
+
+{# Modal Từ chối mượn sách sang trọng, chuẩn UX #}
+<div id="reject-modal" class="modal-back" role="dialog" aria-modal="true" aria-labelledby="reject-title">
+  <div class="modal reject-modal-card">
+    <div class="m-ico reject-ico">{{ icon('alert') }}</div>
+    <h3 id="reject-title">Từ chối yêu cầu mượn</h3>
+    <p class="muted mt-1" id="reject-desc">Xác nhận từ chối yêu cầu mượn của độc giả.</p>
+    <form method="post" id="reject-form" class="mt-3">
+      {{ csrf() }}
+      <div class="field text-left">
+        <label for="reject-reason">Lý do từ chối (thông báo đến độc giả):</label>
+        <input id="reject-reason" name="reason" class="input" placeholder="Ví dụ: Sách đang bảo dưỡng, tạm thời hết bản in thực tế..." required autocomplete="off">
+      </div>
+      <div class="modal-actions mt-3">
+        <button type="button" class="btn btn-ghost" id="reject-cancel">Quay lại</button>
+        <button type="submit" class="btn btn-danger">{{ icon('x') }} Xác nhận từ chối</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% else %}
+<div class="card">{{ empty('✅', 'Không có dữ liệu', 'Chưa có lượt mượn nào ở mục này.') }}</div>
+{% endif %}
 {% endblock %}

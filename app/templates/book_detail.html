@@ -3,57 +3,128 @@
 {% block title %}{{ book.title }}{% endblock %}
 {% block content %}
 <nav class="crumbs" aria-label="Breadcrumb">
-  <a href="{{ url_for('main.index') }}">Tra cứu sách</a><span>/</span>
-  {% if book.category %}<a href="{{ url_for('main.index', category=book.category_id) }}">{{ book.category.name }}</a><span>/</span>{% endif %}
-  <span>{{ book.title }}</span>
+  <a href="{{ url_for('main.index') }}">Tra cứu sách</a>
+  <span class="crumb-sep">/</span>
+  {% if book.category %}
+  <a href="{{ url_for('main.index', category=book.category_id) }}">{{ book.category.name }}</a>
+  <span class="crumb-sep">/</span>
+  {% endif %}
+  <span class="crumb-current">{{ book.title }}</span>
 </nav>
 
-<div class="detail">
-  <div class="cover-wrap" data-reveal="zoom"><div data-tilt="10">{{ cover(book) }}</div></div>
-
-  <div data-reveal>
-    <span class="badge badge-primary badge-plain">{{ book.category.name if book.category else 'Chưa phân loại' }}</span>
-    <h1>{{ book.title }}</h1>
-    <div class="author">{{ book.author }}</div>
-
-    <div class="meta-grid" data-stagger>
-      <div class="meta" data-reveal><span>ISBN</span><b>{{ book.isbn or '—' }}</b></div>
-      <div class="meta" data-reveal><span>Nhà xuất bản</span><b>{{ book.publisher or '—' }}</b></div>
-      <div class="meta" data-reveal><span>Năm xuất bản</span><b>{{ book.year or '—' }}</b></div>
-      {% if current_user.is_authenticated and current_user.is_admin %}
-      <div class="meta" data-reveal><span>Vị trí kệ</span><b>{{ book.location or '—' }}</b></div>
-      {% endif %}
+<article class="detail-editorial">
+  <div class="detail-header-grid">
+    {# Cột bìa sách #}
+    <div class="detail-cover-col">
+      <div class="detail-cover-frame" data-reveal="zoom">
+        <div data-tilt="6">{{ cover(book, 'detail-cover') }}</div>
+      </div>
+      <div class="detail-availability-badge {{ 'in-stock' if book.available_copies > 0 else 'out-of-stock' }}">
+        <span class="status-indicator"></span>
+        {% if book.available_copies > 0 %}
+          Đang có sẵn tại thư viện
+        {% else %}
+          Tạm thời hết bản in
+        {% endif %}
+      </div>
     </div>
 
-    {% if book.description %}<p style="max-width:62ch">{{ book.description }}</p>{% endif %}
+    {# Cột thông tin xuất bản và đặt mượn #}
+    <div class="detail-info-col" data-reveal>
+      <div class="detail-meta-header">
+        <span class="badge badge-category">{{ book.category.name if book.category else 'Chưa phân loại' }}</span>
+        {% if book.isbn %}<span class="isbn-tag">ISBN: {{ book.isbn }}</span>{% endif %}
+      </div>
 
-    <div class="borrow-box">
-      <div class="flex between items-center wrap gap-2">
-        <div style="min-width:220px;flex:1">{{ meter(book) }}</div>
-        <div>
-          {% if not current_user.is_authenticated %}
-            <a class="btn btn-primary btn-lg" href="{{ url_for('auth.login', next=request.path) }}">Đăng nhập để mượn {{ icon('arrow') }}</a>
-          {% elif current_user.is_admin %}
-            <a class="btn btn-ghost btn-lg" href="{{ url_for('admin.book_edit', book_id=book.id) }}">{{ icon('edit') }} Chỉnh sửa sách</a>
-          {% else %}
-            <form method="post" action="{{ url_for('main.borrow', book_id=book.id) }}">{{ csrf() }}
-              <button class="btn btn-primary btn-lg" {{ 'disabled' if book.available_copies < 1 }}>{{ icon('book') }} Gửi yêu cầu mượn</button>
-            </form>
-          {% endif %}
+      <h1 class="detail-title">{{ book.title }}</h1>
+      <div class="detail-author">Tác giả: <span>{{ book.author }}</span></div>
+
+      {# Bảng thông số ấn bản #}
+      <div class="meta-spec-grid" data-stagger>
+        <div class="meta-spec-item" data-reveal>
+          <span class="spec-label">Năm xuất bản</span>
+          <span class="spec-value">{{ book.year or '—' }}</span>
+        </div>
+        <div class="meta-spec-item" data-reveal>
+          <span class="spec-label">Nhà xuất bản</span>
+          <span class="spec-value">{{ book.publisher or '—' }}</span>
+        </div>
+        <div class="meta-spec-item" data-reveal>
+          <span class="spec-label">Kho lưu trữ</span>
+          <span class="spec-value">{{ book.location or 'Kho tổng hợp' }}</span>
+        </div>
+        <div class="meta-spec-item" data-reveal>
+          <span class="spec-label">Tình trạng kho</span>
+          <span class="spec-value">{{ book.available_copies }} / {{ book.total_copies }} bản</span>
         </div>
       </div>
-      <div class="rules">
-        <div>{{ icon('clock') }}<span>Mượn tối đa <b>{{ config.LOAN_DAYS }} ngày</b></span></div>
-        <div>{{ icon('refresh') }}<span>Gia hạn <b>{{ config.MAX_RENEWALS }} lần</b> (+{{ config.RENEW_DAYS }} ngày)</span></div>
-        <div>{{ icon('alert') }}<span>Trả muộn phạt <b>{{ '{:,}'.format(config.FINE_PER_DAY).replace(',', '.') }} đ/ngày</b></span></div>
+
+      {# Khối hành động mượn sách #}
+      <div class="borrow-panel">
+        <div class="borrow-panel-top">
+          <div class="borrow-meter-wrap">{{ meter(book) }}</div>
+          <div class="borrow-actions">
+            {% if not current_user.is_authenticated %}
+              <a class="btn btn-primary btn-lg" href="{{ url_for('auth.login', next=request.path) }}">
+                Đăng nhập để mượn {{ icon('arrow') }}
+              </a>
+            {% elif current_user.is_admin %}
+              <a class="btn btn-ghost btn-lg" href="{{ url_for('admin.book_edit', book_id=book.id) }}">
+                {{ icon('edit') }} Chỉnh sửa sách
+              </a>
+            {% else %}
+              <form method="post" action="{{ url_for('main.borrow', book_id=book.id) }}">{{ csrf() }}
+                <button class="btn btn-primary btn-lg" {{ 'disabled' if book.available_copies < 1 }}>
+                  {{ icon('book') }} Gửi yêu cầu mượn
+                </button>
+              </form>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="policy-strip">
+          <div class="policy-item">
+            {{ icon('clock') }}
+            <span>Thời hạn: <b>{{ config.LOAN_DAYS }} ngày</b></span>
+          </div>
+          <div class="policy-item">
+            {{ icon('refresh') }}
+            <span>Gia hạn: <b>{{ config.MAX_RENEWALS }} lần</b> (+{{ config.RENEW_DAYS }} ngày)</span>
+          </div>
+          <div class="policy-item">
+            {{ icon('alert') }}
+            <span>Quá hạn: <b>{{ '{:,}'.format(config.FINE_PER_DAY).replace(',', '.') }} đ/ngày</b></span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
-</div>
+
+  {# Khối bài viết giới thiệu tác phẩm - Editorial Typography #}
+  {% if book.description %}
+  <section class="editorial-section">
+    <div class="editorial-divider">
+      <span class="divider-label">Tóm tắt &amp; Giới thiệu tác phẩm</span>
+    </div>
+    <div class="editorial-article">
+      <div class="editorial-body">
+        {% for para in book.description.split('\n') if para.strip() %}
+          <p>{{ para.strip() }}</p>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+</article>
 
 {% if book.category_id %}
-<section class="mt-4" style="margin-top:64px">
-  <div class="section-head"><div><span class="eyebrow">Gợi ý</span><h2 class="mt-1">Sách cùng thể loại</h2></div></div>
+<section class="related-section">
+  <div class="section-head">
+    <div>
+      <span class="eyebrow">Thư viện gợi ý</span>
+      <h2 class="mt-1">Sách cùng thể loại</h2>
+    </div>
+  </div>
   <div class="book-grid" data-related data-category="{{ book.category_id }}" data-exclude="{{ book.id }}" data-tone="{{ book.category_id % 6 }}"></div>
 </section>
 {% endif %}

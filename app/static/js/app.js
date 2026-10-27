@@ -195,13 +195,31 @@
       if (!items.length) { rel.closest('section').remove(); return; }
       items.forEach((b, i) => {
         const a = el('a', 'book-card'); a.href = `/books/${b.id}`; a.style.animation = `pageIn .6s var(--ease) ${i * 90}ms both`; a.dataset.tilt = '6';
-        const c = el('div', `cover c${(rel.dataset.tone | 0)}`);
-        const inner = el('div', 'cover-in');
-        inner.append(Object.assign(el('span', 'cover-cat'), { textContent: b.category || 'Sách' }),
-          Object.assign(el('span', 'cover-title'), { textContent: b.title }), Object.assign(el('span', 'cover-author'), { textContent: b.author }));
-        c.append(inner);
-        const h = Object.assign(el('h3'), { textContent: b.title });
-        a.append(c, h, Object.assign(el('div', 'author'), { textContent: b.author })); a.style.color = 'inherit';
+        let c;
+        if (b.cover_url) {
+          c = el('div', 'cover cover-img');
+          const img = document.createElement('img');
+          img.src = b.cover_url; img.alt = `Bìa sách ${b.title}`; img.loading = 'lazy';
+          img.onerror = () => {
+            c.className = `cover c${(rel.dataset.tone | 0)}`;
+            c.innerHTML = `<div class="cover-in"><span class="cover-cat">${b.category || 'Sách'}</span><span class="cover-title">${b.title}</span><span class="cover-author">${b.author}</span></div>`;
+          };
+          c.append(img);
+        } else {
+          c = el('div', `cover c${(rel.dataset.tone | 0)}`);
+          const inner = el('div', 'cover-in');
+          inner.append(Object.assign(el('span', 'cover-cat'), { textContent: b.category || 'Sách' }),
+            Object.assign(el('span', 'cover-title'), { textContent: b.title }), Object.assign(el('span', 'cover-author'), { textContent: b.author }));
+          c.append(inner);
+        }
+        const wrapCover = el('div', 'card-cover-wrapper');
+        wrapCover.append(c);
+        const content = el('div', 'card-content');
+        const h = Object.assign(el('h3', 'card-title'), { textContent: b.title });
+        const auth = Object.assign(el('div', 'card-author'), { textContent: b.author });
+        content.append(h, auth);
+        a.append(wrapCover, content);
+        a.style.color = 'inherit';
         rel.append(a);
         if (fine && !reduce) a.addEventListener('pointermove', (e) => {
           const r = a.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
@@ -229,4 +247,23 @@
 
   /* ---- Donut thống kê ---- */
   $$('.donut[data-p]').forEach(d => setTimeout(() => d.style.setProperty('--p', d.dataset.p), 200));
+
+  /* ---- Modal Từ chối mượn sách (Admin Loans) ---- */
+  const rejectModal = $('#reject-modal');
+  if (rejectModal) {
+    const form = $('#reject-form'), desc = $('#reject-desc'), input = $('#reject-reason'), cancelBtn = $('#reject-cancel');
+    $$('.btn-open-reject').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (form) form.action = btn.dataset.action;
+        if (desc) desc.innerHTML = `Xác nhận từ chối độc giả <b>${btn.dataset.user}</b> mượn cuốn “<b>${btn.dataset.book}</b>”.`;
+        if (input) input.value = '';
+        rejectModal.classList.add('open');
+        setTimeout(() => input && input.focus(), 120);
+      });
+    });
+    const closeModal = () => rejectModal.classList.remove('open');
+    cancelBtn && cancelBtn.addEventListener('click', closeModal);
+    rejectModal.addEventListener('click', (e) => { if (e.target === rejectModal) closeModal(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && rejectModal.classList.contains('open')) closeModal(); });
+  }
 })();

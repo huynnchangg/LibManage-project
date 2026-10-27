@@ -14,4 +14,4 @@ class Config:
     MAX_RENEWALS = 1        # số lần gia hạn tối đa
     MAX_ACTIVE_LOANS = 5    # số sách tối đa (đang mượn + chờ duyệt)
     FINE_PER_DAY = 5000     # VND / ngày quá hạn
-    PER_PAGE = 9
+    PER_PAGE = 12
