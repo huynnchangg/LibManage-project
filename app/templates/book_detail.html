@@ -20,6 +20,9 @@
       <div class="meta" data-reveal><span>ISBN</span><b>{{ book.isbn or '—' }}</b></div>
       <div class="meta" data-reveal><span>Nhà xuất bản</span><b>{{ book.publisher or '—' }}</b></div>
       <div class="meta" data-reveal><span>Năm xuất bản</span><b>{{ book.year or '—' }}</b></div>
+      {% if current_user.is_authenticated and current_user.is_admin %}
+      <div class="meta" data-reveal><span>Vị trí kệ</span><b>{{ book.location or '—' }}</b></div>
+      {% endif %}
     </div>
 
     {% if book.description %}<p style="max-width:62ch">{{ book.description }}</p>{% endif %}

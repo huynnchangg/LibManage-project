@@ -1,11 +1,12 @@
 """Chức năng quản trị dành cho thủ thư (RBAC: chỉ role admin)."""
+from datetime import date
 from functools import wraps
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from ..extensions import db
-from ..models import Book, Category, Loan, User
+from ..models import LOAN_BORROWING, Book, Category, Loan, User
 from ..services import book_service, loan_service
 from ..services.loan_service import LoanError
 
@@ -113,7 +114,7 @@ def users():
     if q:
         like = f"%{q}%"
         query = query.filter(db.or_(User.full_name.ilike(like), User.username.ilike(like),
-                                    User.student_code.ilike(like)))
+                                     User.student_code.ilike(like)))
     return render_template("admin/users.html", users=query.order_by(User.full_name).all())
 
 
@@ -145,14 +146,19 @@ def user_toggle(user_id):
 @admin_required
 def loans():
     status = request.args.get("status", "pending")
+    page = request.args.get("page", 1, type=int)
+    per_page = 15
+
     query = Loan.query
     if status == "overdue":
-        items = [l for l in query.filter_by(status="borrowing").all() if l.is_overdue]
+        query = query.filter(Loan.status == LOAN_BORROWING, Loan.due_date < date.today()).order_by(Loan.due_date.asc())
     else:
         if status != "all":
             query = query.filter_by(status=status)
-        items = query.order_by(Loan.requested_at.desc()).limit(200).all()
-    return render_template("admin/loans.html", loans=items, status=status)
+        query = query.order_by(Loan.requested_at.desc())
+
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    return render_template("admin/loans.html", pagination=pagination, loans=pagination.items, status=status)
 
 
 def _loan(loan_id):

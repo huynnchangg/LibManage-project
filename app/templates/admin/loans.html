@@ -1,5 +1,5 @@
 {% extends "admin/_layout.html" %}
-{% from "macros.html" import csrf, icon, status_badge, empty %}
+{% from "macros.html" import csrf, icon, status_badge, empty, pager %}
 {% block title %}Quản lý mượn trả{% endblock %}
 {% block admin_content %}
 <div class="page-head" data-reveal><div><span class="eyebrow">{{ icon('loans') }} Mượn trả</span><h1 class="mt-1">Quản lý mượn trả</h1></div></div>
@@ -35,5 +35,6 @@
   {% endfor %}
   </tbody>
 </table></div>
+{{ pager(pagination, 'admin.loans', {'status': status}) }}
 {% else %}<div class="card">{{ empty('✅', 'Không có dữ liệu', 'Chưa có lượt mượn nào ở mục này.') }}</div>{% endif %}
 {% endblock %}

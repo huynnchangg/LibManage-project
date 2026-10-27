@@ -41,6 +41,8 @@ def save_book(book, form):
     book.isbn = form.get("isbn", "").strip() or None
     book.publisher = form.get("publisher", "").strip() or None
     book.description = form.get("description", "").strip() or None
+    book.cover_url = form.get("cover_url", "").strip() or None
+    book.location = form.get("location", "").strip() or None
     book.category_id = int(form["category_id"]) if form.get("category_id") else None
     db.session.add(book)
     db.session.commit()

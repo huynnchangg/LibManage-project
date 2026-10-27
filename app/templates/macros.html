@@ -33,13 +33,22 @@
   {% set l = loan.status_label %}<span class="badge badge-{{ 'warning' if l[1]=='warning' else 'primary' if l[1]=='primary' else 'success' if l[1]=='success' else 'danger' if l[1]=='danger' else 'secondary' }}">{{ l[0] }}</span>
 {% endmacro %}
 
-{# Bìa sách tạo bằng CSS: màu theo thể loại #}
+{# Bìa sách: dùng ảnh thật nếu có cover_url, fallback về CSS #}
 {% macro cover(book, cls='') %}
+{% if book.cover_url %}
+<div class="cover cover-img {{ cls }}">
+  <img src="{{ book.cover_url }}"
+       alt="Bìa sách {{ book.title }}"
+       loading="lazy"
+       onerror="this.closest('.cover').classList.add('cover-img-err');this.remove()">
+</div>
+{% else %}
 <div class="cover c{{ (book.category_id or 0) % 6 }} {{ cls }}"><div class="cover-in">
   <span class="cover-cat">{{ book.category.name if book.category else 'Sách' }}</span>
   <span class="cover-title">{{ book.title }}</span>
   <span class="cover-author">{{ book.author }}</span>
 </div></div>
+{% endif %}
 {% endmacro %}
 
 {# Thanh hiển thị số bản còn lại #}

@@ -90,7 +90,7 @@ def return_book(loan, admin):
     loan.fine_amount = fine
     loan.fine_paid = fine == 0
     loan.processed_by = admin.id
-    loan.book.available_copies += 1
+    loan.book.available_copies = min(loan.book.total_copies, loan.book.available_copies + 1)
     db.session.commit()
     return fine
 
@@ -98,6 +98,10 @@ def return_book(loan, admin):
 def renew(loan, user):
     if loan.user_id != user.id:
         raise LoanError("Bạn không có quyền với lượt mượn này.")
+    if not user.active:
+        raise LoanError("Tài khoản của bạn đang bị khoá.")
+    if unpaid_fines(user) > 0:
+        raise LoanError("Bạn còn tiền phạt chưa nộp, vui lòng thanh toán tại quầy thủ thư.")
     if loan.status != LOAN_BORROWING:
         raise LoanError("Chỉ gia hạn được sách đang mượn.")
     if loan.is_overdue:

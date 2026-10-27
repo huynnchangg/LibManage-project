@@ -43,6 +43,8 @@ def register():
             error = "Vui lòng điền đủ thông tin bắt buộc."
         elif len(password) < 6:
             error = "Mật khẩu tối thiểu 6 ký tự."
+        elif len(password) > 128:
+            error = "Mật khẩu tối đa 128 ký tự."
         elif password != f.get("confirm", ""):
             error = "Mật khẩu nhập lại không khớp."
         elif User.query.filter((User.username == username) | (User.email == email)).first():
@@ -58,6 +60,41 @@ def register():
             flash("Đăng ký thành công, hãy đăng nhập.", "success")
             return redirect(url_for("auth.login"))
     return render_template("register.html")
+
+
+@bp.route("/change-password", methods=["GET", "POST"])
+@login_required
+def change_password():
+    if request.method == "POST":
+        f = request.form
+        old_password = f.get("old_password", "")
+        new_password = f.get("new_password", "")
+        confirm = f.get("confirm", "")
+
+        error = None
+        if not (old_password and new_password and confirm):
+            error = "Vui lòng điền đầy đủ các thông tin."
+        elif not current_user.check_password(old_password):
+            error = "Mật khẩu hiện tại không đúng."
+        elif len(new_password) < 6:
+            error = "Mật khẩu mới tối thiểu 6 ký tự."
+        elif len(new_password) > 128:
+            error = "Mật khẩu mới tối đa 128 ký tự."
+        elif new_password != confirm:
+            error = "Mật khẩu xác nhận không khớp."
+        elif old_password == new_password:
+            error = "Mật khẩu mới không được trùng mật khẩu cũ."
+
+        if error:
+            flash(error, "danger")
+        else:
+            current_user.set_password(new_password)
+            db.session.commit()
+            flash("Đổi mật khẩu thành công.", "success")
+            default = "admin.dashboard" if current_user.is_admin else "main.index"
+            return redirect(url_for(default))
+
+    return render_template("change_password.html")
 
 
 @bp.route("/logout", methods=["POST"])

@@ -8,11 +8,10 @@ htmlcov/
 docs/_build/
 
 # Database & runtime
-instance/
-*.db
+# *.db KHÔNG ignore để có thể sync library.db cho cả nhóm
 *.sqlite3
 
-# CSV data (qua lon de commit)
+# CSV data (quá lớn để commit — chỉ commit books_clean.json)
 *.csv
 
 # Python

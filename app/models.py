@@ -72,6 +72,8 @@ class Book(db.Model):
     publisher = db.Column(db.String(120))
     year = db.Column(db.Integer)
     description = db.Column(db.Text)
+    cover_url = db.Column(db.String(500))          # URL ảnh bìa
+    location = db.Column(db.String(20))            # Vị trí kệ, vd: "Tủ 03 - Ngăn 07"
     total_copies = db.Column(db.Integer, nullable=False, default=1)
     available_copies = db.Column(db.Integer, nullable=False, default=1)
     category_id = db.Column(db.Integer, db.ForeignKey("category.id"))
@@ -84,6 +86,8 @@ class Book(db.Model):
             "id": self.id, "title": self.title, "author": self.author,
             "isbn": self.isbn, "publisher": self.publisher, "year": self.year,
             "category": self.category.name if self.category else None,
+            "cover_url": self.cover_url,
+            "location": self.location,
             "total_copies": self.total_copies,
             "available_copies": self.available_copies,
         }

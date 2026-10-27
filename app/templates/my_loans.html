@@ -58,7 +58,11 @@
       {% if l.status == 'pending' %}
         <form method="post" action="{{ url_for('main.cancel', loan_id=l.id) }}" data-confirm="Bạn muốn huỷ yêu cầu mượn “{{ l.book.title }}”?">{{ csrf() }}<button class="btn btn-ghost btn-sm">{{ icon('x') }} Huỷ yêu cầu</button></form>
       {% elif l.status == 'borrowing' and not l.is_overdue %}
-        <form method="post" action="{{ url_for('main.renew', loan_id=l.id) }}">{{ csrf() }}<button class="btn btn-primary btn-sm">{{ icon('refresh') }} Gia hạn</button></form>
+        {% if l.renew_count < config.MAX_RENEWALS %}
+          <form method="post" action="{{ url_for('main.renew', loan_id=l.id) }}" data-confirm="Xác nhận gia hạn thêm {{ config.RENEW_DAYS }} ngày cho cuốn “{{ l.book.title }}”?">{{ csrf() }}<button class="btn btn-primary btn-sm">{{ icon('refresh') }} Gia hạn (+{{ config.RENEW_DAYS }} ngày)</button></form>
+        {% else %}
+          <span class="badge badge-secondary" title="Bạn đã dùng hết số lần gia hạn cho cuốn sách này">{{ icon('check') }} Đã gia hạn ({{ l.renew_count }}/{{ config.MAX_RENEWALS }})</span>
+        {% endif %}
       {% endif %}
     </div>
   </article>

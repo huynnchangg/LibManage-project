@@ -143,12 +143,17 @@ main{flex:1;padding:32px 0 64px}
 @keyframes shine{to{background-position:250% 0}}
 .hero p.lead{font-size:1.1rem;color:var(--muted);max-width:540px}
 .search-box{position:relative;margin-top:30px;max-width:600px}
-.search-box form{display:flex;align-items:center;gap:8px;padding:8px 8px 8px 20px;border-radius:999px;background:var(--surface);
+.search-box form{display:flex;align-items:center;gap:8px;padding:6px 6px 6px 20px;border-radius:999px;background:var(--surface);
   border:1.5px solid var(--line);box-shadow:var(--shadow);transition:.3s var(--ease)}
 .search-box form:focus-within{border-color:var(--primary);box-shadow:var(--shadow-lg);transform:translateY(-2px)}
 .search-box input{flex:1;border:0;background:transparent;color:var(--text);font:inherit;font-size:1rem;outline:0;min-width:0}
+.search-box .btn{padding:9px 20px;border-radius:999px;flex:none}
 .suggest{position:absolute;left:0;right:0;top:calc(100% + 10px);z-index:20;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
-  box-shadow:var(--shadow-lg);padding:8px;display:none;max-height:380px;overflow:auto}
+  box-shadow:var(--shadow-lg);padding:8px;display:none;max-height:400px;overflow-y:auto;
+  scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+.suggest::-webkit-scrollbar{width:6px}
+.suggest::-webkit-scrollbar-track{background:transparent}
+.suggest::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}
 .suggest.open{display:block;animation:pop .25s var(--ease)}
 @keyframes pop{from{opacity:0;transform:translateY(-8px) scale(.98)}to{opacity:1;transform:none}}
 .suggest a{display:flex;align-items:center;gap:12px;padding:10px;border-radius:12px;color:var(--text)}
@@ -156,6 +161,8 @@ main{flex:1;padding:32px 0 64px}
 .suggest .s-title{font-weight:600;line-height:1.3}.suggest .s-sub{font-size:.8rem;color:var(--muted)}
 .suggest .s-empty{padding:16px;text-align:center;color:var(--muted)}
 .mini-cover{width:36px;height:48px;border-radius:6px;flex:none;background:linear-gradient(135deg,var(--primary),var(--accent))}
+.mini-cover-img{background:var(--surface-2)}
+.mini-cover-img img{width:100%;height:100%;object-fit:cover;border-radius:6px;display:block}
 .hero-tags{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
 .hero-art{position:relative;height:380px;perspective:900px}
 .hero-art .cover{position:absolute;width:190px;box-shadow:var(--shadow-lg)}
@@ -183,6 +190,12 @@ main{flex:1;padding:32px 0 64px}
 .cover-author{font-size:6.6cqw;opacity:.9;font-weight:500}
 .c0{--c1:#2563eb;--c2:#4f46e5}.c1{--c1:#0891b2;--c2:#2563eb}.c2{--c1:#7c3aed;--c2:#db2777}
 .c3{--c1:#059669;--c2:#0891b2}.c4{--c1:#ea580c;--c2:#db2777}.c5{--c1:#0f172a;--c2:#334155}
+
+/* Bìa ảnh thật */
+.cover-img{background:var(--surface-2)}
+.cover-img img{width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block}
+/* Khi ảnh load lỗi, fallback về màu gradient giống cover CSS */
+.cover-img.cover-img-err{background:linear-gradient(145deg,#2563eb,#7c3aed)}
 
 /* ---------- Category chips, toolbar ---------- */
 .section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:22px}
@@ -369,3 +382,15 @@ main{flex:1;padding:32px 0 64px}
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
   .js [data-reveal]{opacity:1;transform:none}
 }
+
+
+/* ---------- Utility & Admin Profile Extensions ---------- */
+.card-body{padding:24px}
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:24px}
+@media (max-width:768px){.grid-2{grid-template-columns:1fr}}
+.stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:14px}
+.stat-num{font:800 1.5rem var(--font-display);color:var(--primary);line-height:1.2}
+.stat-label{font-size:.82rem;color:var(--muted);margin-top:4px}
+.table-sm th,.table-sm td{padding:10px 14px;font-size:.86rem}
+.fw-bold{font-weight:700}
+.mb-1{margin-bottom:8px}

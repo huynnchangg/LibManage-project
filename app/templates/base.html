@@ -39,6 +39,7 @@
       </button>
       {% if current_user.is_authenticated %}
         <div class="user-chip"><span class="avatar">{{ current_user.full_name[:1]|upper }}</span><span class="name">{{ current_user.full_name }}</span></div>
+        <a class="icon-btn" href="{{ url_for('auth.change_password') }}" aria-label="Đổi mật khẩu" title="Đổi mật khẩu">{{ icon('shield') }}</a>
         <form method="post" action="{{ url_for('auth.logout') }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="icon-btn" aria-label="Đăng xuất" title="Đăng xuất">{{ icon('logout') }}</button>
@@ -58,6 +59,13 @@
     <span class="flash-item" data-cat="{{ cat }}">{{ msg }}</span>
   {% endfor %}
 </div>
+<noscript>
+  <div class="container mt-2">
+    {% for cat, msg in get_flashed_messages(with_categories=true) %}
+      <div class="alert alert-{{ 'danger' if cat in ('danger','error') else 'warning' if cat == 'warning' else 'success' }}">{{ msg }}</div>
+    {% endfor %}
+  </div>
+</noscript>
 <div class="toasts" aria-live="polite"></div>
 
 <main>

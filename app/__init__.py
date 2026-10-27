@@ -1,7 +1,21 @@
 from flask import Flask, jsonify, render_template, request
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
 
 from .config import Config
 from .extensions import csrf, db, login_manager
+
+
+@event.listens_for(Engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    """Kích hoạt ràng buộc khóa ngoại (Foreign Key Constraints) cho SQLite."""
+    cursor = dbapi_connection.cursor()
+    try:
+        cursor.execute("PRAGMA foreign_keys=ON")
+    except Exception:
+        pass
+    finally:
+        cursor.close()
 
 
 def create_app(config_object=Config):

@@ -37,9 +37,9 @@ Không mượn thêm khi còn sách quá hạn hoặc còn nợ phạt; không m
 | Controller | `app/blueprints/` (auth, main, admin, api) | Nhận request, kiểm tra quyền, gọi service |
 | Service | `app/services/` | Toàn bộ quy tắc nghiệp vụ, giao dịch DB |
 | Model | `app/models.py` | Thực thể SQLAlchemy ORM |
-| Database | `instance/library.db` (SQLite) | Có thể đổi sang MySQL/PostgreSQL qua `DATABASE_URL` |
+| Database | `instance/library.db` (SQLite) | CSDL SQLite nạp sẵn dữ liệu phong phú, đồng bộ cả nhóm qua Git |
 
-Bảo mật: băm mật khẩu (werkzeug), RBAC (`admin_required` decorator), CSRF token (Flask-WTF), ORM chống SQL Injection, Jinja2 auto-escape chống XSS, security headers, chống open-redirect, cookie `HttpOnly`/`SameSite=Lax`.
+Bảo mật: băm mật khẩu (werkzeug), RBAC (`admin_required` decorator), CSRF token (Flask-WTF), ORM chống SQL Injection, Jinja2 auto-escape chống XSS, kích hoạt Foreign Keys SQLite (`PRAGMA foreign_keys=ON`), security headers, chống open-redirect, cookie `HttpOnly`/`SameSite=Lax`.
 
 ## 4. Mô hình dữ liệu
 
@@ -50,9 +50,9 @@ Loan.processed_by → User  (thủ thư xử lý)
 
 ## 5. Chức năng
 
-**Độc giả (Reader):** đăng ký/đăng nhập, tìm kiếm + lọc sách, xem chi tiết, gửi/huỷ yêu cầu mượn, gia hạn, xem lịch sử và tiền phạt.
+**Độc giả (Reader):** đăng ký/đăng nhập, đổi mật khẩu, tìm kiếm + lọc sách theo thể loại/tình trạng còn bản, xem chi tiết, gửi/huỷ yêu cầu mượn, gia hạn (có badge đếm số lần và chặn nợ phạt), xem lịch sử và tiền phạt.
 
-**Thủ thư (Admin):** dashboard thống kê, CRUD sách & thể loại, quản lý & khoá/mở khoá độc giả, xem chi tiết từng độc giả kèm lịch sử mượn, duyệt/từ chối yêu cầu, nhận trả sách, thu tiền phạt.
+**Thủ thư (Admin):** dashboard thống kê, CRUD sách & thể loại, quản lý & khoá/mở khoá độc giả, xem chi tiết từng độc giả kèm lịch sử mượn, duyệt/từ chối yêu cầu, nhận trả sách, thu tiền phạt, đổi mật khẩu, phân trang mượn trả và tối ưu lọc sách quá hạn.
 
 **REST API JSON (`/api/v1/`):**
 
@@ -64,41 +64,32 @@ Loan.processed_by → User  (thủ thư xử lý)
 
 ## 6. Cài đặt và chạy
 
+File CSDL `instance/library.db` đã được khởi tạo sẵn và commit trực tiếp lên GitHub với dữ liệu mẫu phong phú. Sau khi clone repo, chỉ cần chạy ngay:
+
 ```bash
 # 1. Cài đúng phiên bản thư viện (đã pin trong requirements.txt)
 pip install -r requirements.txt
 
-# 2. Khởi tạo DB + tạo tài khoản admin + thể loại mặc định
-python seed.py
-
-# 3. (Tuỳ chọn) Import sách từ file CSV Goodreads
-python import_books.py goodreads_books.csv              # toàn bộ
-python import_books.py goodreads_books.csv --limit 500  # 500 dòng đầu
-python import_books.py goodreads_books.csv --copies 3   # 3 bản/cuốn (mặc định 2)
-
-# 4. Chạy server
+# 2. Chạy server (đã có sẵn CSDL 800 sách, 18 độc giả, các lượt mượn mẫu)
 python run.py       # → http://127.0.0.1:5000
 
-# 5. (Tuỳ chọn) Kiểm thử luồng nghiệp vụ tự động
+# 3. Kiểm thử luồng nghiệp vụ tự động
 python test_flow.py
 ```
 
-Tài khoản sau khi chạy `seed.py`:
-- **Admin:** `admin / admin123`
+### Tài khoản mẫu có sẵn trong hệ thống:
+- **Admin (Thủ thư):** `admin / admin123`
+- **18 Độc giả mẫu (Sinh viên NEU):** `reader01` đến `reader18` (mật khẩu chung: `reader123`)
 
-> Độc giả mẫu (sv001–sv003) đã bị bỏ khỏi `seed.py` để tránh ảnh hưởng DB thật.  
-> Dùng `python seed.py --reset` để xoá toàn bộ và tạo lại từ đầu (chỉ dùng trên máy dev).
+> **Tuỳ chọn:** Dùng lệnh `python seed.py --reset` nếu muốn xóa CSDL và tạo mới lại từ đầu với dữ liệu ngẫu nhiên (tổng số bản 1-10 cuốn/đầu sách, phân bổ các trạng thái mượn trả, quá hạn, tiền phạt).
 
-## 7. Import dữ liệu sách (`import_books.py`)
+## 7. Pipeline làm sạch dữ liệu (`clean_csv.py`)
 
-Đọc CSV định dạng Goodreads, làm sạch dữ liệu và nhập vào DB.
+File `clean_csv.py` đọc CSV gốc từ Goodreads, làm sạch dữ liệu, kiểm tra ảnh bìa hợp lệ từ Open Library và xuất ra `books_clean.json`:
 
-| Tham số | Mặc định | Ý nghĩa |
-|---|---|---|
-| `<file.csv>` | _(bắt buộc)_ | Đường dẫn tới file CSV |
-| `--limit N` | toàn bộ | Chỉ xử lý N dòng đầu |
-| `--copies N` | `2` | Số bản mỗi đầu sách |
-| `--reset` | tắt | Xoá toàn bộ sách cũ trước khi import |
+```bash
+python clean_csv.py goodreads_books.csv --limit 800
+```
 
 **Pipeline làm sạch description:**
 1. Fix mojibake (UTF-8 bị decode nhầm sang Latin-1)
@@ -106,23 +97,16 @@ Tài khoản sau khi chạy `seed.py`:
 3. Loại bỏ duplicate (CSV Goodreads nhét preview bị cắt + full text vào cùng 1 field)
 4. Cắt đoạn đầu rác (fragment bị cắt giữa câu còn dính sau dedup)
 5. Cắt tại ranh giới câu nếu quá `1500` ký tự
-
-**Bộ lọc — bỏ qua sách nếu:**
-- Không có title hoặc author
-- Description còn dấu hiệu bẩn không sửa được (fragment chữ thường trước chữ hoa, hoặc cụm 3 từ lặp lại 2+ lần trong 400 ký tự đầu)
-- Description không phải tiếng Anh (>3% ký tự non-ASCII và <3 stopword tiếng Anh)
-- Trùng title + author với sách đã có trong DB
-
-Kết quả thực tế: ~86% sách hợp lệ (428/500 dòng đầu CSV).
+6. Verify URL ảnh bìa thật qua Open Library (loại bỏ ảnh placeholder 1x1 GIF)
 
 ## 8. Cấu trúc thư mục
 
 ```
 app/
 ├── blueprints/
-│   ├── auth.py        # TV3 – đăng nhập, đăng ký, đăng xuất
+│   ├── auth.py        # TV3 – đăng nhập, đăng ký, đổi mật khẩu, đăng xuất
 │   ├── main.py        # TV1+TV2 – trang chủ, chi tiết sách, mượn/huỷ/gia hạn
-│   ├── admin.py       # TV3+TV2 – toàn bộ /admin/*
+│   ├── admin.py       # TV3+TV2 – toàn bộ /admin/* (phân trang, tối ưu query quá hạn)
 │   └── api.py         # TV3 – REST JSON /api/v1/*
 ├── services/
 │   ├── book_service.py   # TV3 – CRUD sách/thể loại, tìm kiếm, thống kê
@@ -135,23 +119,25 @@ app/
 │   │   ├── book_form.html    # form thêm/sửa sách
 │   │   ├── categories.html   # quản lý thể loại
 │   │   ├── users.html        # danh sách độc giả
-│   │   ├── user_detail.html  # chi tiết độc giả + lịch sử mượn  ← TV3
-│   │   ├── loans.html        # duyệt/từ chối/trả sách
+│   │   ├── user_detail.html  # chi tiết độc giả + lịch sử mượn
+│   │   ├── loans.html        # duyệt/từ chối/trả sách + phân trang
 │   │   └── fines.html        # thu tiền phạt
 │   ├── base.html · macros.html
 │   ├── index.html · book_detail.html
-│   ├── login.html · register.html · error.html
+│   ├── login.html · register.html · change_password.html · error.html
 │   └── my_loans.html
 ├── static/
-│   ├── css/style.css   # design system tự xây
+│   ├── css/style.css   # design system tự xây + tiện ích layout admin
 │   └── js/app.js
 ├── models.py     # User · Category · Book · Loan + constants
 ├── config.py     # hằng số nghiệp vụ + cấu hình Flask
 └── extensions.py # khởi tạo db, login_manager, csrf
-seed.py           # khởi tạo DB + admin + thể loại
-import_books.py   # import sách từ CSV Goodreads
-run.py            # entry point
-test_flow.py      # kiểm thử tích hợp tự động
+instance/
+└── library.db    # CSDL SQLite hoàn chỉnh (commit trực tiếp)
+seed.py           # nạp CSDL đầy đủ: 800 sách, 18 SV, 42+ loans mẫu đa dạng
+clean_csv.py      # làm sạch CSV Goodreads và trích xuất books_clean.json
+run.py            # entry point chạy ứng dụng
+test_flow.py      # kiểm thử tích hợp tự động (hỗ trợ console UTF-8)
 requirements.txt  # dependencies đã pin version
 ```
 
@@ -161,23 +147,23 @@ Không dùng framework CSS ngoài, tự xây design system:
 
 | File | Vai trò |
 |---|---|
-| `static/css/style.css` | Biến màu, dark mode, button, card, form, bảng, toast, modal, stat cards… |
+| `static/css/style.css` | Biến màu, dark mode, button, card, form, bảng, toast, modal, stat cards, admin profile layout… |
 | `static/js/app.js` | Đếm số động, hiện dần khi cuộn (`data-reveal`), nghiêng 3D card, gợi ý tìm kiếm, toast, hộp xác nhận (`data-confirm`), dark mode |
-| `templates/base.html` | Khung chung: navbar, footer, toast, thanh tiến độ cuộn |
+| `templates/base.html` | Khung chung: navbar, footer, toast, thẻ noscript dự phòng, thanh tiến độ cuộn |
 | `templates/macros.html` | Reusable components: `icon`, `cover`, `meter`, `pager`, `status_badge`, `empty`, `csrf` |
-
-Quy ước nhóm:
-- Trang mới: `{% extends "base.html" %}` hoặc `admin/_layout.html`
-- Nút xoá/hành động nguy hiểm: thêm `data-confirm="..."` vào `<form>`
-- Khối cần animation: thêm `data-reveal`
-- Không thêm CSS inline ngoài trường hợp override biến màu
 
 ## 10. Kiểm thử
 
-Chạy `python test_flow.py` để test tự động các luồng chính.  
-Checklist kiểm thử tích hợp đầy đủ (TC01–TC20) xem trong file phân công nhóm.
+Chạy `python test_flow.py` để test tự động các luồng chính:
+- Truy cập trang công khai, API JSON.
+- Phân quyền RBAC người dùng thường vs Admin.
+- Luồng gửi yêu cầu mượn sách, kiểm tra tồn kho.
+- Đổi mật khẩu độc giả và đăng nhập lại bằng mật khẩu mới.
+- Admin duyệt yêu cầu mượn, kiểm tra tồn kho giảm.
+- Lọc sách quá hạn trực tiếp bằng truy vấn SQL.
+- Trả sách quá hạn, tự động tính tiền phạt và ghi nhận thu phạt.
+- Khóa / mở khóa tài khoản độc giả.
 
 ## 11. Ghi chú Git
 
-File `instance/library.db` và `*.csv` đã được thêm vào `.gitignore` — không commit DB hay data file vào repo.  
-Mỗi thành viên tự chạy `seed.py` + `import_books.py` trên máy của mình sau khi clone.
+File CSDL `instance/library.db` được lưu trữ trực tiếp trong repository để các thành viên trong nhóm và giảng viên khi tải về có thể chạy ngay lập tức. File dữ liệu thô `*.csv` được loại trừ trong `.gitignore` để giữ repo nhẹ nhàng.

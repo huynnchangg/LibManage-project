@@ -151,7 +151,17 @@
         const info = el('div');
         info.append(Object.assign(el('div', 's-title'), { textContent: b.title }),
           Object.assign(el('div', 's-sub'), { textContent: `${b.author} · ${b.available_copies > 0 ? 'Còn ' + b.available_copies + ' bản' : 'Hết bản'}` }));
-        a.append(el('div', 'mini-cover'), info); box.append(a);
+        let thumb;
+        if (b.cover_url) {
+          thumb = el('div', 'mini-cover mini-cover-img');
+          const img = document.createElement('img');
+          img.src = b.cover_url; img.alt = b.title; img.loading = 'lazy';
+          img.onerror = () => { thumb.classList.remove('mini-cover-img'); img.remove(); };
+          thumb.append(img);
+        } else {
+          thumb = el('div', 'mini-cover');
+        }
+        a.append(thumb, info); box.append(a);
       });
       box.classList.add('open'); idx = -1;
     };
@@ -161,7 +171,7 @@
       timer = setTimeout(async () => {
         ctrl && ctrl.abort(); ctrl = new AbortController();
         try {
-          const r = await fetch(`/api/v1/books?per_page=5&q=${encodeURIComponent(q)}`, { signal: ctrl.signal });
+          const r = await fetch(`/api/v1/books?per_page=8&q=${encodeURIComponent(q)}`, { signal: ctrl.signal });
           render((await r.json()).items || [], q);
         } catch (e) { /* bỏ qua khi huỷ request */ }
       }, 220);

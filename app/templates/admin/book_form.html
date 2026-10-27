@@ -17,6 +17,8 @@
     <div class="field col-4"><label>Năm xuất bản</label><input name="year" type="number" class="input" value="{{ f.year or '' }}"></div>
     <div class="field col-4"><label>Tổng số bản *</label><input name="total_copies" type="number" min="0" class="input" required value="{{ f.total_copies if f.total_copies is not none else 1 }}"></div>
     <div class="field col-12"><label>Mô tả</label><textarea name="description" rows="4" class="textarea">{{ f.description or '' }}</textarea></div>
+    <div class="field col-8"><label>URL ảnh bìa</label><input name="cover_url" class="input" placeholder="https://covers.openlibrary.org/..." value="{{ f.cover_url or '' }}"></div>
+    <div class="field col-4"><label>Vị trí kệ</label><input name="location" class="input" placeholder="Tủ 01 - Ngăn 01" value="{{ f.location or '' }}"></div>
   </div>
   <div class="flex gap-1 mt-3"><button class="btn btn-primary">{{ icon('check') }} Lưu</button><a class="btn btn-ghost" href="{{ url_for('admin.books') }}">Huỷ</a></div>
 </form>
