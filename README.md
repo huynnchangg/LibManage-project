@@ -81,23 +81,15 @@ python test_flow.py
 - **Admin (Thủ thư):** `admin / admin123`
 - **18 Độc giả mẫu (Sinh viên NEU):** `reader01` đến `reader18` (mật khẩu chung: `reader123`)
 
-> **Tuỳ chọn:** Dùng lệnh `python seed.py --reset` nếu muốn xóa CSDL và tạo mới lại từ đầu với dữ liệu ngẫu nhiên (tổng số bản 1-10 cuốn/đầu sách, phân bổ các trạng thái mượn trả, quá hạn, tiền phạt).
+> **Tuỳ chọn:** Dùng lệnh `python seed.py --reset` nếu muốn xóa CSDL và tạo mới lại từ đầu với dữ liệu ngẫu nhiên từ file `books_clean.json` (tổng số bản 1-10 cuốn/đầu sách, phân bổ các trạng thái mượn trả, quá hạn, tiền phạt).
 
-## 7. Pipeline làm sạch dữ liệu (`clean_csv.py`)
+## 7. Dữ liệu sách chuẩn hóa (`books_clean.json`)
 
-File `clean_csv.py` đọc CSV gốc từ Goodreads, làm sạch dữ liệu, kiểm tra ảnh bìa hợp lệ từ Open Library và xuất ra `books_clean.json`:
+Toàn bộ **800 đầu sách** được trích xuất và làm sạch kỹ càng từ nguồn Goodreads, đã loại bỏ mojibake, giải mã thực thể HTML, xử lý trùng lặp mô tả, và xác thực link ảnh bìa thật từ Open Library.
 
-```bash
-python clean_csv.py goodreads_books.csv --limit 800
-```
-
-**Pipeline làm sạch description:**
-1. Fix mojibake (UTF-8 bị decode nhầm sang Latin-1)
-2. Decode HTML entities (`&amp;`, `&#39;`…)
-3. Loại bỏ duplicate (CSV Goodreads nhét preview bị cắt + full text vào cùng 1 field)
-4. Cắt đoạn đầu rác (fragment bị cắt giữa câu còn dính sau dedup)
-5. Cắt tại ranh giới câu nếu quá `1500` ký tự
-6. Verify URL ảnh bìa thật qua Open Library (loại bỏ ảnh placeholder 1x1 GIF)
+File `books_clean.json` được lưu kèm trong repo để script `seed.py` có thể nạp hoặc khởi tạo lại CSDL bất cứ lúc nào:
+- Phân bổ vào **10 thể loại** chuẩn mực (Văn học, CNTT, Kinh tế, Khoa học, Lịch sử...).
+- Đầy đủ tiêu đề, tác giả, ISBN, năm xuất bản, nhà xuất bản, mô tả sạch và ảnh bìa.
 
 ## 8. Cấu trúc thư mục
 
@@ -133,9 +125,9 @@ app/
 ├── config.py     # hằng số nghiệp vụ + cấu hình Flask
 └── extensions.py # khởi tạo db, login_manager, csrf
 instance/
-└── library.db    # CSDL SQLite hoàn chỉnh (commit trực tiếp)
-seed.py           # nạp CSDL đầy đủ: 800 sách, 18 SV, 42+ loans mẫu đa dạng
-clean_csv.py      # làm sạch CSV Goodreads và trích xuất books_clean.json
+└── library.db    # CSDL SQLite hoàn chỉnh (800 sách, 18 SV, 42 loans)
+books_clean.json  # dữ liệu 800 đầu sách đã làm sạch và chuẩn hóa
+seed.py           # script nạp CSDL đầy đủ khi cần reset
 run.py            # entry point chạy ứng dụng
 test_flow.py      # kiểm thử tích hợp tự động (hỗ trợ console UTF-8)
 requirements.txt  # dependencies đã pin version
@@ -166,4 +158,4 @@ Chạy `python test_flow.py` để test tự động các luồng chính:
 
 ## 11. Ghi chú Git
 
-File CSDL `instance/library.db` được lưu trữ trực tiếp trong repository để các thành viên trong nhóm và giảng viên khi tải về có thể chạy ngay lập tức. File dữ liệu thô `*.csv` được loại trừ trong `.gitignore` để giữ repo nhẹ nhàng.
+File CSDL `instance/library.db` và dữ liệu `books_clean.json` được lưu trữ trực tiếp trong repository để các thành viên trong nhóm và giảng viên khi tải về có thể chạy ngay lập tức. Toàn bộ các file dữ liệu thô cồng kềnh (CSV, ZIP) và script tạm thời đã được dọn dẹp sạch sẽ để repo nhẹ và chuẩn chỉ.
