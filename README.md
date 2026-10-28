@@ -1,164 +1,129 @@
 # Hệ thống quản lý mượn trả sách thư viện
 
 Bài tập nhóm – Lập trình Web (Backend: Python/Flask, CSDL: SQLite).  
-Thành viên: **Huyền Trang** (TV1 – UI/Frontend) · **Khánh Linh** (TV2 – nghiệp vụ mượn/trả) · **Thuận Phạm** (TV3 – auth, CRUD, quản lý độc giả, dashboard)
+Thành viên: **Huyền Trang** (TV1 – UI/Frontend) · **Khánh Linh** (TV2 – nghiệp vụ mượn/trả) · **Thuận Phạm** (TV3 – auth, CRUD, quản lý độc giả, dashboard, kiến trúc hệ thống)
 
 ---
 
 ## 1. Phát biểu nhiệm vụ
 
-Số hoá toàn bộ quy trình mượn – trả sách của thư viện trường đại học: độc giả tra cứu và gửi yêu cầu mượn, thủ thư duyệt – giao – nhận trả, hệ thống tự kiểm soát tồn kho, hạn trả, gia hạn và tiền phạt quá hạn.
+Số hoá toàn bộ quy trình mượn – trả sách của thư viện trường đại học theo mô hình thực tế: độc giả tra cứu, thêm sách vào giỏ mượn hoặc mượn nhanh 1-click, thủ thư duyệt và giữ sách tại quầy trong 48 giờ, xác nhận giao sách, cho mượn trực tiếp tại quầy bằng mã vạch (Barcode), kiểm tra tình trạng sách khi hoàn trả (hư hỏng 25%–100%, báo mất) và thu tiền phạt minh bạch.
 
-## 2. Quy trình xuyên suốt
+## 2. Quy trình nghiệp vụ chuẩn
 
 ```
-Tra cứu sách → Gửi yêu cầu (pending) → Thủ thư duyệt (borrowing, trừ tồn kho, đặt hạn trả)
-            → Gia hạn (tối đa 1 lần)  → Trả sách (returned, cộng tồn kho, tính phạt)
-            → Thu tiền phạt            → Báo cáo thống kê
+[ ĐỘC GIẢ ]                                              [ THỦ THƯ TẠI QUẦY ]
+                                                            
+(MƯỢN ONLINE)                                            (MƯỢN TRỰC TIẾP TẠI QUẦY)
+Chọn sách vào Giỏ → Gửi yêu cầu                             Sinh viên mang sách tới quầy
+        │                                                           │
+        ▼                                                           ▼
+Tạo Phiếu mượn (PENDING)                                 Thủ thư nhập Mã SV + Quét Barcode sách
+        │                                                           │
+        ▼ (Thủ thư gom sách trên kệ)                                ▼
+Thủ thư DUYỆT → READY_FOR_PICKUP (Chờ lấy sách)         Tạo phiếu & GIAO SÁCH NGAY
+        │ (Giữ chỗ sách trong 48 giờ)                               │
+        ▼                                                           │
+SV đến quầy đọc Mã phiếu / Mã SV ───────────────────────────────────┤
+        │                                                           │
+Thủ thư kiểm tra mã vạch & BÀN GIAO SÁCH                            │
+        │                                                           │
+        ▼                                                           ▼
+   BORROWING (Đang mượn — Bắt đầu tính hạn 14 ngày & cho phép gia hạn tối đa 1 lần)
+                                │
+                                ▼ (SV mang sách tới trả)
+                     QUÁ TRÌNH TRẢ & KIỂM TRA SÁCH
+                     Thủ thư quét Barcode từng cuốn:
+                     ├── 1. Bình thường: Nhập lại kho (Nếu trễ hạn: Phạt 5.000đ/ngày)
+                     ├── 2. Bị hỏng (Rách, mất trang): Phạt 25%, 50%, 75% giá bìa
+                     └── 3. Báo mất: Đền bù 100% giá sách (+ phạt trễ nếu có)
+                                │
+                                ▼
+                     THANH TOÁN TIỀN PHẠT:
+                     ├── Thu tiền mặt/QR ngay lúc trả sách (Đóng phiếu)
+                     └── Hoặc Ghi nợ (Tài khoản bị khoá mượn mới cho đến khi trả nợ)
 ```
 
 Quy tắc ràng buộc (xem `app/config.py`):
 
 | Hằng số | Mặc định | Ý nghĩa |
 |---|---|---|
-| `LOAN_DAYS` | 14 ngày | Thời hạn mỗi lần mượn |
-| `RENEW_DAYS` | 7 ngày | Số ngày gia hạn thêm |
-| `MAX_RENEWALS` | 1 lần | Số lần gia hạn tối đa |
-| `MAX_ACTIVE_LOANS` | 5 cuốn | Số sách đang mượn + chờ duyệt đồng thời |
-| `FINE_PER_DAY` | 5.000 đ | Phạt mỗi ngày quá hạn |
-| `PER_PAGE` | 12 mục | Số sách/bản ghi hiển thị mỗi trang |
+| `LOAN_DAYS` | 14 ngày | Thời hạn mỗi lần mượn sách |
+| `PICKUP_HOURS` | 48 giờ | Thời hạn giữ sách tại quầy sau khi thủ thư duyệt online |
+| `RENEW_DAYS` | 7 ngày | Số ngày gia hạn thêm mỗi lần |
+| `MAX_RENEWALS` | 1 lần | Số lần gia hạn tối đa cho mỗi lượt mượn |
+| `MAX_ACTIVE_LOANS` | 5 cuốn | Số sách đang mượn + chờ lấy/duyệt đồng thời |
+| `FINE_PER_DAY` | 5.000 đ | Tiền phạt mỗi ngày quá hạn |
+| `PER_PAGE` | 12 mục | Số ấn bản hiển thị mỗi trang (tương thích lưới 4-3-2 cột) |
 
-Không mượn thêm khi còn sách quá hạn hoặc còn nợ phạt; không mượn trùng sách; hết bản thì không duyệt.
+Biểu phí bồi thường hư hại & mất sách:
+* **Hư hại nhẹ (25% giá bìa):** Quăn mép, vết bẩn nhỏ, gập trang.
+* **Hư hại vừa (50% giá bìa):** Rách bìa ngoài, bong gáy nhẹ, viết vẽ nhiều.
+* **Hư hại nặng (75% giá bìa):** Rách mất trang phụ, dính nước/ẩm mốc.
+* **Hỏng hoàn toàn / Báo mất (100% giá bìa):** Rách nát không thể phục hồi hoặc làm mất sách.
 
-## 3. Kiến trúc: Monolithic phân lớp (MVC) + REST API + RBAC
+## 3. Kiến trúc hệ thống: Monolithic phân lớp (MVC) + REST API + RBAC
 
 | Lớp | Thư mục / file | Vai trò |
 |---|---|---|
-| Presentation | `app/templates/`, `app/static/` | Giao diện Jinja2; design system tự xây (không Bootstrap) |
+| Presentation | `app/templates/`, `app/static/` | Giao diện Jinja2; Anthropic Paper Design System (Warm Parchment) |
 | Controller | `app/blueprints/` (auth, main, admin, api) | Nhận request, kiểm tra quyền, gọi service |
-| Service | `app/services/` | Toàn bộ quy tắc nghiệp vụ, giao dịch DB |
-| Model | `app/models.py` | Thực thể SQLAlchemy ORM |
+| Service | `app/services/` (book_service, loan_service) | Toàn bộ quy tắc nghiệp vụ, tính toán phạt, giao dịch DB |
+| Model | `app/models.py` | Thực thể SQLAlchemy ORM: User, Category, Book, BookCopy, LoanSlip, Loan, CartItem |
 | Database | `instance/library.db` (SQLite) | CSDL SQLite nạp sẵn dữ liệu phong phú, đồng bộ cả nhóm qua Git |
 
-Bảo mật: băm mật khẩu (werkzeug), RBAC (`admin_required` decorator), CSRF token (Flask-WTF), ORM chống SQL Injection, Jinja2 auto-escape chống XSS, kích hoạt Foreign Keys SQLite (`PRAGMA foreign_keys=ON`), security headers, chống open-redirect, cookie `HttpOnly`/`SameSite=Lax`.
+Bảo mật: băm mật khẩu (werkzeug), RBAC (`admin_required` decorator), CSRF token (Flask-WTF), ORM chống SQL Injection, Jinja2 auto-escape chống XSS, kích hoạt Foreign Keys SQLite (`PRAGMA foreign_keys=ON`), security headers (`nosniff`, `DENY`), chống open-redirect, cookie `HttpOnly`/`SameSite=Lax`.
 
-## 4. Mô hình dữ liệu
+## 4. Mô hình dữ liệu mở rộng (ERD)
 
 ```
-User (1)──(n) Loan (n)──(1) Book (n)──(1) Category
-Loan.processed_by → User  (thủ thư xử lý)
+User (1) ── (n) CartItem (n) ── (1) Book
+User (1) ── (n) LoanSlip (1) ── (n) Loan (n) ── (1) BookCopy (n) ── (1) Book (n) ── (1) Category
+LoanSlip.processed_by → User  (thủ thư duyệt/giao)
 ```
 
-## 5. Chức năng
+## 5. Chức năng chính
 
-**Độc giả (Reader):** đăng ký/đăng nhập, đổi mật khẩu, tìm kiếm + lọc sách theo thể loại/tình trạng còn bản, xem chi tiết, gửi/huỷ yêu cầu mượn, gia hạn (có badge đếm số lần và chặn nợ phạt), xem lịch sử và tiền phạt.
+**Độc giả (Reader):**
+* Đăng ký/đăng nhập, đổi mật khẩu.
+* Tra cứu, lọc sách theo thể loại, tìm kiếm tức thì.
+* **Giỏ mượn sách (Borrow Cart):** Gom nhiều cuốn vào giỏ mượn, gửi phiếu mượn 1 lần.
+* **Mượn nhanh 1-click:** Bấm mượn trực tiếp tại trang chi tiết sách.
+* **Quản lý mượn trả cá nhân:** Đếm ngược hạn nhận sách 48h, đếm ngược hạn trả 14 ngày, gia hạn trực tuyến (+7 ngày), huỷ yêu cầu khi chưa nhận.
+* **In phiếu mượn:** Xem chi tiết phiếu mượn và in ra giấy (CSS Print).
 
-**Thủ thư (Admin):** dashboard thống kê, CRUD sách & thể loại, quản lý & khoá/mở khoá độc giả, xem chi tiết từng độc giả kèm lịch sử mượn, duyệt/từ chối yêu cầu, nhận trả sách, thu tiền phạt, đổi mật khẩu, phân trang mượn trả và tối ưu lọc sách quá hạn.
+**Thủ thư (Admin):**
+* **Dashboard thống kê:** Đồ thị Donut trực quan kho sách, top sách mượn nhiều, độc giả tích cực, cảnh báo nợ phạt.
+* **Cho mượn trực tiếp tại quầy:** Nhập mã SV + quét mã vạch (Barcode) xuất sách ngay trong 5 giây.
+* **Duyệt mượn trực tuyến:** Gán bản sao vật lý cụ thể, giữ chỗ 48h cho độc giả.
+* **Bàn giao sách tại quầy:** Xác nhận độc giả đến nhận sách và bắt đầu tính hạn 14 ngày.
+* **Nhận trả sách thông minh:** Tự động tính tiền phạt quá hạn, phạt hư hại 25%–100%, bồi thường mất sách, tùy chọn thu tiền mặt ngay tại quầy.
+* **Quản lý sách & Bản sao:** Thêm/sửa sách, đặt giá bìa, quản lý danh sách mã vạch từng cuốn, ẩn/hiện lưu hành.
+* **Quản lý thể loại:** Thêm, xóa và **đổi tên thể loại**.
+* **Quản lý độc giả:** Phân trang, tìm kiếm, tạo tài khoản độc giả mới, đặt lại mật khẩu (reset password), khóa/mở khóa tài khoản.
+* **Quản lý tiền phạt:** Lọc Đã thu / Chưa thu, tìm kiếm, thu tiền phạt.
 
 **REST API JSON (`/api/v1/`):**
-
-| Method | Endpoint | Quyền | Mô tả |
-|---|---|---|---|
-| GET | `/api/v1/books` | Public | Danh sách sách; query: `q`, `category`, `available=1`, `page`, `per_page` |
-| GET | `/api/v1/books/<id>` | Public | Chi tiết một cuốn sách |
-| GET | `/api/v1/stats` | Admin | Thống kê: `total_titles`, `total_copies`, `readers`, `pending`, `borrowing`, `overdue`, `unpaid` |
+* `GET /api/v1/books`: Danh sách sách (hỗ trợ phân trang, tìm kiếm, lọc thể loại).
+* `GET /api/v1/books/<id>`: Chi tiết một đầu sách kèm thông tin tồn kho.
+* `GET /api/v1/stats`: Thống kê tổng quan hệ thống.
 
 ## 6. Cài đặt và chạy
 
-File CSDL `instance/library.db` đã được khởi tạo sẵn và commit trực tiếp lên GitHub với dữ liệu mẫu phong phú. Sau khi clone repo, chỉ cần chạy ngay:
-
 ```bash
-# 1. Cài đúng phiên bản thư viện (đã pin trong requirements.txt)
+# 1. Cài đặt thư viện
 pip install -r requirements.txt
 
-# 2. Chạy server (đã có sẵn CSDL 800 sách, 18 độc giả, các lượt mượn mẫu)
+# 2. Chạy ứng dụng
 python run.py       # → http://127.0.0.1:5000
 
-# 3. Kiểm thử luồng nghiệp vụ tự động
+# 3. Chạy kiểm thử tự động toàn diện
 python test_flow.py
+
+# 4. Khởi tạo lại CSDL sạch (tuỳ chọn)
+python seed.py --reset
 ```
 
-### Tài khoản mẫu có sẵn trong hệ thống:
-- **Admin (Thủ thư):** `admin / admin123`
-- **18 Độc giả mẫu (Sinh viên NEU):** `reader01` đến `reader18` (mật khẩu chung: `reader123`)
-
-> **Tuỳ chọn:** Dùng lệnh `python seed.py --reset` nếu muốn xóa CSDL và tạo mới lại từ đầu với dữ liệu ngẫu nhiên từ file `books_clean.json` (tổng số bản 1-10 cuốn/đầu sách, phân bổ các trạng thái mượn trả, quá hạn, tiền phạt).
-
-## 7. Dữ liệu sách chuẩn hóa (`books_clean.json`)
-
-Toàn bộ **800 đầu sách** được trích xuất và làm sạch kỹ càng từ nguồn Goodreads, đã loại bỏ mojibake, giải mã thực thể HTML, xử lý trùng lặp mô tả, và xác thực link ảnh bìa thật từ Open Library.
-
-File `books_clean.json` được lưu kèm trong repo để script `seed.py` có thể nạp hoặc khởi tạo lại CSDL bất cứ lúc nào:
-- Phân bổ vào **10 thể loại** chuẩn mực (Văn học, CNTT, Kinh tế, Khoa học, Lịch sử...).
-- Đầy đủ tiêu đề, tác giả, ISBN, năm xuất bản, nhà xuất bản, mô tả sạch và ảnh bìa.
-
-## 8. Cấu trúc thư mục
-
-```
-app/
-├── blueprints/
-│   ├── auth.py        # TV3 – đăng nhập, đăng ký, đổi mật khẩu, đăng xuất
-│   ├── main.py        # TV1+TV2 – trang chủ, chi tiết sách, mượn/huỷ/gia hạn
-│   ├── admin.py       # TV3+TV2 – toàn bộ /admin/* (phân trang, tối ưu query quá hạn)
-│   └── api.py         # TV3 – REST JSON /api/v1/*
-├── services/
-│   ├── book_service.py   # TV3 – CRUD sách/thể loại, tìm kiếm, thống kê
-│   └── loan_service.py   # TV2 – mượn/trả/gia hạn/phạt/thu tiền
-├── templates/
-│   ├── admin/
-│   │   ├── _layout.html      # sidebar layout chung
-│   │   ├── dashboard.html    # thống kê tổng quan
-│   │   ├── books.html        # danh sách sách (admin)
-│   │   ├── book_form.html    # form thêm/sửa sách
-│   │   ├── categories.html   # quản lý thể loại
-│   │   ├── users.html        # danh sách độc giả
-│   │   ├── user_detail.html  # chi tiết độc giả + lịch sử mượn
-│   │   ├── loans.html        # duyệt/từ chối/trả sách + phân trang
-│   │   └── fines.html        # thu tiền phạt
-│   ├── base.html · macros.html
-│   ├── index.html · book_detail.html
-│   ├── login.html · register.html · change_password.html · error.html
-│   └── my_loans.html
-├── static/
-│   ├── css/style.css   # design system tự xây + tiện ích layout admin
-│   └── js/app.js
-├── models.py     # User · Category · Book · Loan + constants
-├── config.py     # hằng số nghiệp vụ + cấu hình Flask
-└── extensions.py # khởi tạo db, login_manager, csrf
-instance/
-└── library.db    # CSDL SQLite hoàn chỉnh (800 sách, 18 SV, 42 loans)
-books_clean.json  # dữ liệu 800 đầu sách đã làm sạch và chuẩn hóa
-seed.py           # script nạp CSDL đầy đủ khi cần reset
-run.py            # entry point chạy ứng dụng
-test_flow.py      # kiểm thử tích hợp tự động (hỗ trợ console UTF-8)
-requirements.txt  # dependencies đã pin version
-```
-
-## 9. Giao diện (TV1 — Tái thiết kế theo Anthropic Editorial Design System)
-
-Không dùng framework CSS ngoài, tự xây design system chuẩn mực học thuật lấy cảm hứng từ tài liệu nghiên cứu trên nền giấy da ấm (warm parchment):
-
-| Thành phần | Đặc tả kỹ thuật |
-|---|---|
-| **Bảng màu tự nhiên** | Nền canvas ngà giấy (`#f0eee6`), bề mặt thẻ ấn phẩm (`#faf9f5`), thẻ tiêu điểm Manilla (`#f5e3c7`), viền hairline mỏng (`#cccbc8`), chân trang đen phiến đá trầm (`#141413`). Điểm nhấn hành động duy nhất dùng tông Đất sét nung Clay (`#d97757`, hover `#c6613f`). Không dùng bóng đổ lòe loẹt hay dải màu tech-blue thông thường. |
-| **Typography chuẩn tiếng Việt** | Hệ font kép hỗ trợ Unicode dấu tiếng Việt 100%: **Lora** (Editorial Serif) thể hiện chiều sâu nội dung, tiêu đề tác phẩm và bài viết giới thiệu; **Plus Jakarta Sans** dành riêng cho giao diện điều hướng (UI Chrome, nút bấm, nhãn trạng thái). |
-| **Lưới hiển thị & Phân trang** | Cấu hình `PER_PAGE = 12` sách/trang tương thích tối ưu với hệ thống lưới 4 cột (desktop) / 3 cột (tablet) / 2 cột (mobile) đối xứng hoàn hảo, xóa bỏ hoàn toàn hiện tượng lệch hàng hay các ô trống thừa. Chiều cao bìa sách chuẩn tỷ lệ vàng 2:3 với `object-fit: cover`. |
-| **Trang chi tiết sách** | Bài viết tóm tắt & giới thiệu tác phẩm định dạng typography báo chí học thuật (`line-height: 1.78`, cỡ chữ 18px, drop-cap chữ cái đầu tao nhã, phân đoạn rành mạch, độ dài dòng chuẩn 72 ký tự). |
-| `static/css/style.css` | Hệ thống design tokens, bố cục lưới sách, typography giới thiệu, bảng quản trị, dark mode, modal, toast... |
-| `static/js/app.js` | Gợi ý tìm kiếm tức thì, tải gợi ý sách cùng thể loại qua REST API, animation lật thẻ, đếm số động... |
-
-## 10. Kiểm thử
-
-Chạy `python test_flow.py` để test tự động các luồng chính:
-- Truy cập trang công khai, API JSON.
-- Phân quyền RBAC người dùng thường vs Admin.
-- Luồng gửi yêu cầu mượn sách, kiểm tra tồn kho.
-- Đổi mật khẩu độc giả và đăng nhập lại bằng mật khẩu mới.
-- Admin duyệt yêu cầu mượn, kiểm tra tồn kho giảm.
-- Lọc sách quá hạn trực tiếp bằng truy vấn SQL.
-- Trả sách quá hạn, tự động tính tiền phạt và ghi nhận thu phạt.
-- Khóa / mở khóa tài khoản độc giả.
-
-## 11. Ghi chú Git
-
-File CSDL `instance/library.db` và dữ liệu `books_clean.json` được lưu trữ trực tiếp trong repository để các thành viên trong nhóm và giảng viên khi tải về có thể chạy ngay lập tức. Toàn bộ các file dữ liệu thô cồng kềnh (CSV, ZIP) và script tạm thời đã được dọn dẹp sạch sẽ để repo nhẹ và chuẩn chỉ.
+### Tài khoản mẫu:
+* **Admin (Thủ thư):** `admin / admin123`
+* **18 Độc giả mẫu:** `reader01` đến `reader18` (mật khẩu chung: `reader123`)

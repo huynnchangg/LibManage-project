@@ -11,6 +11,9 @@
     <h1 class="mt-1">{{ user.full_name }}</h1>
   </div>
   <div class="row-actions">
+    <button type="button" class="btn btn-ghost" id="btn-open-reset-pwd">
+      {{ icon('shield') }} Đặt lại mật khẩu
+    </button>
     <form method="post" action="{{ url_for('admin.user_toggle', user_id=user.id) }}"
       {% if user.active %}data-confirm="Xác nhận khóa tài khoản độc giả @{{ user.username }}? Độc giả này sẽ tạm thời không thể đăng nhập hoặc gửi yêu cầu mượn sách."{% endif %}>
       {{ csrf() }}
@@ -22,103 +25,145 @@
 </div>
 
 {# --- Thông tin tài khoản --- #}
-<div class="card mb-2" data-reveal>
-  <div class="card-body">
-    <div class="grid-2" style="gap:1.5rem">
-      <div>
-        <div class="flex items-center gap-1 mb-1">
-          <span class="avatar" style="width:3rem;height:3rem;font-size:1.5rem">{{ user.full_name[:1]|upper }}</span>
-          <div>
-            <div class="fw-bold">{{ user.full_name }}</div>
-            <div class="small muted">@{{ user.username }}</div>
-          </div>
+<div class="card card-pad mb-3" data-reveal>
+  <div class="user-detail-grid">
+    <div>
+      <div class="flex items-center gap-2 mb-2">
+        <span class="avatar" style="width:3.5rem;height:3.5rem;font-size:1.5rem">{{ user.full_name[:1]|upper }}</span>
+        <div>
+          <div style="font-size:1.25rem;font-weight:700">{{ user.full_name }}</div>
+          <div class="muted">@{{ user.username }}</div>
         </div>
-        <table class="table table-sm" style="max-width:420px">
-          <tr><th style="width:130px">Email</th><td>{{ user.email }}</td></tr>
-          <tr><th>Mã sinh viên</th><td>{{ user.student_code or '—' }}</td></tr>
-          <tr><th>Ngày tạo</th><td>{{ user.created_at|dt }}</td></tr>
-          <tr><th>Trạng thái</th><td>
-            {% if user.active %}
-              <span class="badge badge-success">Đang hoạt động</span>
-            {% else %}
-              <span class="badge badge-secondary">Bị khoá</span>
-            {% endif %}
-          </td></tr>
-        </table>
       </div>
-      <div>
-        <div class="stat-row">
-          <div class="stat-card">
-            <div class="stat-num" data-count="{{ loans|length }}">{{ loans|length }}</div>
-            <div class="stat-label">Tổng lượt mượn</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-num" data-count="{{ loans|selectattr('status','equalto','borrowing')|list|length }}">{{ loans|selectattr('status','equalto','borrowing')|list|length }}</div>
-            <div class="stat-label">Đang mượn</div>
-          </div>
-          <div class="stat-card" style="{{ 'color:var(--danger)' if unpaid > 0 }}">
-            <div class="stat-num">{{ unpaid|vnd }}</div>
-            <div class="stat-label">Nợ phạt chưa nộp</div>
-          </div>
+      <table class="table table-sm user-info-table">
+        <tr><th>Email</th><td>{{ user.email }}</td></tr>
+        <tr><th>Mã sinh viên</th><td><span class="code-tag">{{ user.student_code or '—' }}</span></td></tr>
+        <tr><th>Ngày đăng ký</th><td>{{ user.created_at|dt }}</td></tr>
+        <tr><th>Trạng thái</th><td>
+          {% if user.active %}
+            <span class="badge badge-success">Đang hoạt động</span>
+          {% else %}
+            <span class="badge badge-danger">Đang bị khoá</span>
+          {% endif %}
+        </td></tr>
+      </table>
+    </div>
+
+    <div>
+      <div class="user-stat-grid">
+        <div class="card stat-card">
+          <div class="stat-num" data-count="{{ loans|length }}">{{ loans|length }}</div>
+          <div class="stat-label">Tổng lượt mượn</div>
+        </div>
+        <div class="card stat-card">
+          {% set cur_b = loans|selectattr('status','in',['borrowing','ready_for_pickup'])|list|length %}
+          <div class="stat-num" data-count="{{ cur_b }}">{{ cur_b }}</div>
+          <div class="stat-label">Đang giữ/mượn</div>
+        </div>
+        <div class="card stat-card {{ 'tone-danger' if unpaid > 0 }}">
+          <div class="stat-num">{{ unpaid|vnd }}</div>
+          <div class="stat-label">Nợ phạt chưa thu</div>
         </div>
       </div>
     </div>
   </div>
 </div>
 
+{# --- Modal Đặt lại mật khẩu --- #}
+<div id="reset-pwd-modal" class="modal-back" role="dialog" aria-modal="true" aria-labelledby="reset-pwd-title">
+  <div class="card modal" style="max-width:440px;width:100%">
+    <div class="m-ico">{{ icon('shield') }}</div>
+    <h3 id="reset-pwd-title">Đặt lại mật khẩu độc giả</h3>
+    <p class="muted mt-1 small">Mật khẩu mới sẽ được gán trực tiếp cho tài khoản @{{ user.username }}.</p>
+    <form method="post" action="{{ url_for('admin.user_reset_password', user_id=user.id) }}" class="mt-3">
+      {{ csrf() }}
+      <div class="field text-left">
+        <label for="new_password">Mật khẩu mới *</label>
+        <input id="new_password" name="new_password" class="input" required value="reader123" autocomplete="off">
+        <small class="muted">Mặc định đề xuất: reader123</small>
+      </div>
+      <div class="modal-actions mt-3">
+        <button type="button" class="btn btn-ghost" id="reset-pwd-cancel">Huỷ bỏ</button>
+        <button type="submit" class="btn btn-primary">Xác nhận đổi</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 {# --- Lịch sử mượn sách --- #}
-<h2 class="mt-2 mb-1" data-reveal>Lịch sử mượn sách</h2>
+<h2 class="mt-3 mb-2" data-reveal>Lịch sử mượn trả của độc giả</h2>
 
 {% if loans %}
 <div class="table-wrap" data-reveal>
   <table class="table">
     <thead>
       <tr>
-        <th>#</th>
-        <th>Sách</th>
-        <th>Yêu cầu lúc</th>
-        <th>Hạn trả</th>
-        <th>Trả lúc</th>
-        <th>Tiền phạt</th>
-        <th>Trạng thái</th>
+        <th class="col-stt text-center">STT</th>
+        <th class="col-slip text-center">Phiếu mượn</th>
+        <th>Tác phẩm / Bản sao</th>
+        <th class="col-date text-center">Yêu cầu lúc</th>
+        <th class="col-date text-center">Hạn trả</th>
+        <th class="col-date text-center">Ngày trả</th>
+        <th class="col-amount text-right">Tiền phạt</th>
+        <th class="col-status text-center">Trạng thái</th>
       </tr>
     </thead>
     <tbody>
     {% for l in loans %}
     <tr>
-      <td class="muted">{{ l.id }}</td>
+      <td class="col-stt text-center muted">{{ loop.index }}</td>
+      <td class="col-slip text-center">
+        {% if l.slip %}
+          <span class="barcode-badge">{{ l.slip.code }}</span>
+          <div class="small muted">{{ 'Trực tuyến' if l.slip.slip_type == 'online' else 'Tại quầy' }}</div>
+        {% else %}
+          <span class="muted">—</span>
+        {% endif %}
+      </td>
       <td>
         <b>{{ l.book.title }}</b>
-        <div class="small muted">{{ l.book.author }}</div>
-      </td>
-      <td>{{ l.requested_at|dt }}</td>
-      <td>
-        {{ l.due_date.strftime('%d/%m/%Y') if l.due_date else '—' }}
-        {% if l.is_overdue %}
-          <div class="small" style="color:var(--danger)">Trễ {{ l.overdue_days }} ngày</div>
-        {% endif %}
-      </td>
-      <td>{{ l.returned_at|dt if l.returned_at else '—' }}</td>
-      <td>
-        {% if l.fine_amount %}
-          {{ l.fine_amount|vnd }}
-          {% if l.fine_paid %}
-            <span class="badge badge-success">Đã thu</span>
-          {% else %}
-            <span class="badge badge-danger">Chưa nộp</span>
-          {% endif %}
+        {% if l.copy %}
+          <div class="small muted">Mã vạch: <span class="code-tag font-mono">{{ l.copy.barcode }}</span> ({{ l.copy.location or 'Kho' }})</div>
         {% else %}
-          —
+          <div class="small muted">Chưa gán bản sao</div>
         {% endif %}
       </td>
-      <td>{{ status_badge(l) }}</td>
+      <td class="col-date text-center">{{ l.requested_at|dt }}</td>
+      <td class="col-date text-center">
+        <span class="text-nowrap">{{ l.due_date.strftime('%d/%m/%Y') if l.due_date else '—' }}</span>
+        {% if l.is_overdue %}
+          <div class="small text-nowrap" style="color:var(--color-danger);font-weight:600">Trễ {{ l.overdue_days }} ngày</div>
+        {% endif %}
+      </td>
+      <td class="col-date text-center"><span class="text-nowrap">{{ l.returned_at|dt if l.returned_at else '—' }}</span></td>
+      <td class="col-amount text-right">
+        {% if l.fine_amount %}
+          <b class="text-nowrap" style="color:var(--{{ 'success' if l.fine_paid else 'danger' }})">{{ l.fine_amount|vnd }}</b>
+          <div class="small text-nowrap">{{ 'Đã thu' if l.fine_paid else 'Chưa nộp' }}</div>
+        {% else %}
+          <span class="muted">—</span>
+        {% endif %}
+      </td>
+      <td class="col-status text-center">{{ status_badge(l) }}</td>
     </tr>
     {% endfor %}
     </tbody>
   </table>
 </div>
 {% else %}
-<div class="card">{{ empty('📚', 'Chưa có lịch sử mượn', 'Độc giả này chưa phát sinh lượt mượn sách nào trong hệ thống.') }}</div>
+<div class="card empty-card">{{ empty('📚', 'Chưa có lịch sử mượn', 'Độc giả này chưa phát sinh lượt mượn sách nào trong hệ thống.') }}</div>
 {% endif %}
 
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const modal = document.getElementById('reset-pwd-modal');
+  const openBtn = document.getElementById('btn-open-reset-pwd');
+  const cancelBtn = document.getElementById('reset-pwd-cancel');
+  if (modal && openBtn) {
+    openBtn.addEventListener('click', () => modal.classList.add('open'));
+    cancelBtn && cancelBtn.addEventListener('click', () => modal.classList.remove('open'));
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('open'); });
+  }
+});
+</script>
 {% endblock %}

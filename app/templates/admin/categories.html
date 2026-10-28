@@ -17,7 +17,8 @@
       <h3>Tạo thể loại mới</h3>
     </div>
     <p class="muted small mb-3">Tạo thể loại để phân loại và sắp xếp sách trong kho khoa học hơn.</p>
-    <form method="post" class="cat-form">{{ csrf() }}
+    <form method="post" class="cat-form">
+      {{ csrf() }}
       <div class="field">
         <label for="cat-name">Tên thể loại *</label>
         <input id="cat-name" name="name" class="input" placeholder="Ví dụ: Khoa học dữ liệu, Triết học..." required autocomplete="off">
@@ -33,29 +34,35 @@
       <table class="table">
         <thead>
           <tr>
-            <th class="col-stt">STT</th>
+            <th class="col-stt text-center">STT</th>
             <th>Tên thể loại</th>
-            <th>Quy mô đầu sách</th>
-            <th class="col-actions text-right" style="min-width: 140px; padding-right: 20px;">Thao tác</th>
+            <th class="col-scale text-center">Quy mô đầu sách</th>
+            <th class="col-actions text-right" style="min-width: 170px;">Thao tác</th>
           </tr>
         </thead>
         <tbody>
         {% for c in categories %}
         <tr>
-          <td class="col-stt muted">{{ loop.index }}</td>
+          <td class="col-stt text-center muted">{{ loop.index }}</td>
           <td>
             <div class="cat-name-cell">
-              <span class="row-bullet">{{ icon('layers') }}</span>
-              <b>{{ c.name }}</b>
+              <b id="cat-name-{{ c.id }}">{{ c.name }}</b>
             </div>
           </td>
-          <td>
+          <td class="col-scale text-center">
             <span class="badge badge-category">
-              <span class="category-dot"></span><b>{{ c.books|length }}</b> đầu sách
+              <b>{{ c.books|length }}</b> đầu sách
             </span>
           </td>
           <td class="col-actions text-right">
             <div class="row-actions">
+              <button type="button" class="btn btn-ghost btn-sm btn-edit-cat"
+                      data-id="{{ c.id }}"
+                      data-name="{{ c.name }}"
+                      data-action="{{ url_for('admin.category_edit', cat_id=c.id) }}"
+                      title="Đổi tên thể loại">
+                {{ icon('edit') }} Sửa
+              </button>
               <form method="post" action="{{ url_for('admin.category_delete', cat_id=c.id) }}" data-confirm="Xác nhận xoá thể loại “{{ c.name }}”? Thao tác này chỉ thực hiện được khi không còn đầu sách nào thuộc thể loại này.">
                 {{ csrf() }}
                 <button class="btn btn-danger btn-sm btn-action-cat" title="Xóa thể loại">{{ icon('trash') }} Xóa</button>
@@ -72,4 +79,47 @@
     {% endif %}
   </div>
 </div>
+
+{# Modal Sửa tên thể loại #}
+<div id="edit-cat-modal" class="modal-back" role="dialog" aria-modal="true" aria-labelledby="edit-cat-title">
+  <div class="card modal" style="max-width:440px;width:100%">
+    <div class="m-ico">{{ icon('edit') }}</div>
+    <h3 id="edit-cat-title">Đổi tên thể loại</h3>
+    <p class="muted mt-1 small">Cập nhật tên thể loại cho toàn bộ các đầu sách thuộc chuyên mục này.</p>
+    <form method="post" id="edit-cat-form" class="mt-3">
+      {{ csrf() }}
+      <div class="field text-left">
+        <label for="edit-cat-name-input">Tên thể loại mới *</label>
+        <input id="edit-cat-name-input" name="name" class="input" required autocomplete="off">
+      </div>
+      <div class="modal-actions mt-3">
+        <button type="button" class="btn btn-ghost" id="edit-cat-cancel">Huỷ bỏ</button>
+        <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const modal = document.getElementById('edit-cat-modal');
+  if (!modal) return;
+  const form = document.getElementById('edit-cat-form');
+  const input = document.getElementById('edit-cat-name-input');
+  const cancel = document.getElementById('edit-cat-cancel');
+
+  document.querySelectorAll('.btn-edit-cat').forEach(btn => {
+    btn.addEventListener('click', () => {
+      form.action = btn.dataset.action;
+      input.value = btn.dataset.name;
+      modal.classList.add('open');
+      setTimeout(() => input.focus(), 100);
+    });
+  });
+
+  const close = () => modal.classList.remove('open');
+  cancel && cancel.addEventListener('click', close);
+  modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+});
+</script>
 {% endblock %}

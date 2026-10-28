@@ -12,6 +12,7 @@ class Config:
     LOAN_DAYS = 14          # số ngày được mượn
     RENEW_DAYS = 7          # mỗi lần gia hạn thêm
     MAX_RENEWALS = 1        # số lần gia hạn tối đa
-    MAX_ACTIVE_LOANS = 5    # số sách tối đa (đang mượn + chờ duyệt)
+    MAX_ACTIVE_LOANS = 5    # số sách tối đa (đang mượn + chờ duyệt/lấy)
+    PICKUP_HOURS = 48       # số giờ giữ sách tại quầy sau khi duyệt (48h = 2 ngày)
     FINE_PER_DAY = 5000     # VND / ngày quá hạn
     PER_PAGE = 12

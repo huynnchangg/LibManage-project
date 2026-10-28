@@ -1,4 +1,4 @@
-"""Khởi tạo DB đầy đủ: schema, categories, users, sách và loan mẫu.
+"""Khởi tạo DB đầy đủ: schema, categories, users, sách, bản sao (BookCopy) và phiếu mượn (LoanSlip) mẫu.
 
 Chạy lệnh để khởi tạo:
     python seed.py --reset    # xóa toàn bộ và tạo mới từ đầu với dữ liệu phong phú
@@ -19,8 +19,11 @@ if sys.platform.startswith("win"):
 from app import create_app
 from app.extensions import db
 from app.models import (
-    LOAN_BORROWING, LOAN_CANCELLED, LOAN_PENDING, LOAN_REJECTED, LOAN_RETURNED,
-    Book, Category, Loan, ROLE_ADMIN, ROLE_READER, User,
+    COPY_AVAILABLE, COPY_BORROWED, COPY_DAMAGED, COPY_LOST, COPY_RESERVED,
+    LOAN_BORROWING, LOAN_CANCELLED, LOAN_DAMAGED, LOAN_LOST, LOAN_PENDING,
+    LOAN_READY, LOAN_REJECTED, LOAN_RETURNED, ROLE_ADMIN, ROLE_READER,
+    SLIP_TYPE_DIRECT, SLIP_TYPE_ONLINE,
+    Book, BookCopy, Category, Loan, LoanSlip, User,
 )
 
 # ---------------------------------------------------------------------------
@@ -34,7 +37,6 @@ ADMIN_USER = dict(
     password="admin123",
 )
 
-# 18 độc giả mẫu sinh động với đầy đủ khoa viện trường ĐH
 SAMPLE_READERS = [
     dict(username="reader01", email="reader01@neu.edu.vn", full_name="Nguyễn Văn An", student_code="11210001", password="reader123"),
     dict(username="reader02", email="reader02@neu.edu.vn", full_name="Trần Thị Bình", student_code="11210002", password="reader123"),
@@ -71,9 +73,6 @@ DEFAULT_CATEGORIES = [
 
 BOOKS_JSON = Path("books_clean.json")
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 def _get_or_create_user(data: dict, role: str) -> tuple[User, bool]:
     u = User.query.filter_by(username=data["username"]).first()
@@ -111,9 +110,9 @@ def _seed_categories() -> dict[str, Category]:
 
 
 def _seed_books(cat_cache: dict[str, Category]) -> list[Book]:
-    """Đọc books_clean.json và thêm sách vào DB với số bản random 1-10."""
+    """Đọc books_clean.json, thêm sách và tự động tạo các bản sách BookCopy với barcode cá biệt."""
     if not BOOKS_JSON.exists():
-        print(f"⚠ Không tìm thấy {BOOKS_JSON}. Chạy 'python clean_csv.py' trước.")
+        print(f"⚠ Không tìm thấy {BOOKS_JSON}.")
         return []
 
     with open(BOOKS_JSON, encoding="utf-8") as f:
@@ -121,8 +120,6 @@ def _seed_books(cat_cache: dict[str, Category]) -> list[Book]:
 
     added = skipped = 0
     books_added: list[Book] = []
-
-    # Sử dụng seed random cố định để mỗi lần seed đều ra cùng phân bổ
     rnd = random.Random(101)
 
     for rec in records:
@@ -146,9 +143,9 @@ def _seed_books(cat_cache: dict[str, Category]) -> list[Book]:
             db.session.flush()
             cat_cache[cat_name] = cat
 
-        # Random số bản từ 1 đến 10 cuốn
-        total_copies = rnd.randint(1, 10)
-        available_copies = total_copies
+        total_copies = rnd.randint(2, 6)
+        # Giá bìa ngẫu nhiên từ 60.000đ đến 250.000đ làm tròn đến 5.000đ
+        price = rnd.randint(12, 50) * 5000
 
         book = Book(
             title=rec["title"],
@@ -158,18 +155,34 @@ def _seed_books(cat_cache: dict[str, Category]) -> list[Book]:
             year=rec.get("year"),
             description=rec.get("description"),
             cover_url=rec.get("cover_url"),
-            location=rec.get("location"),
+            location=rec.get("location") or f"Kệ {rnd.choice(['A','B','C','D'])}{rnd.randint(1,5)} - Ngăn {rnd.randint(1,6):02d}",
+            price=price,
+            is_active=True,
             total_copies=total_copies,
-            available_copies=available_copies,
+            available_copies=total_copies,
             category_id=cat.id,
         )
         db.session.add(book)
+        db.session.flush()
+
+        # Tạo từng bản sao BookCopy với Barcode riêng biệt
+        for c_idx in range(1, total_copies + 1):
+            barcode = f"BC{book.id:04d}{c_idx:02d}"
+            copy = BookCopy(
+                book_id=book.id,
+                barcode=barcode,
+                location=book.location,
+                status=COPY_AVAILABLE,
+                condition=rnd.choice(["Mới", "Tốt", "Tốt", "Khá"]),
+            )
+            db.session.add(copy)
+
         books_added.append(book)
         added += 1
 
         if added % 100 == 0:
             db.session.flush()
-            print(f"  ... đã thêm {added} cuốn")
+            print(f"  ... đã thêm {added} đầu sách và các bản sao vật lý")
 
     db.session.flush()
     print(f"✓ Sách: thêm {added} cuốn, bỏ qua {skipped} (đã tồn tại).")
@@ -177,7 +190,7 @@ def _seed_books(cat_cache: dict[str, Category]) -> list[Book]:
 
 
 def _seed_loans(readers: list[User], books: list[Book], admin: User) -> None:
-    """Tạo các lượt mượn trả mẫu sinh động: đang mượn, quá hạn, chờ duyệt, nợ phạt chưa thu."""
+    """Tạo các phiếu mượn (LoanSlip) và chi tiết lượt mượn (Loan/LoanItem) mẫu chuẩn thực tế."""
     if not books:
         books = Book.query.all()
     if not books or not readers:
@@ -188,129 +201,281 @@ def _seed_loans(readers: list[User], books: list[Book], admin: User) -> None:
     now = datetime.now()
 
     pool = books[:min(len(books), 100)]
-    loan_records = []
-    book_idx = 0
+    slip_counter = 1
 
-    def next_book():
-        nonlocal book_idx
-        b = pool[book_idx % len(pool)]
-        book_idx += 1
-        return b
+    def make_slip_code():
+        nonlocal slip_counter
+        code = f"PM-{now.strftime('%Y%m')}-{slip_counter:04d}"
+        slip_counter += 1
+        return code
 
-    # 1. Các lượt mượn bình thường (hạn còn xa, hạn còn gần)
-    for reader in readers[:10]:
-        b = next_book()
-        if b.available_copies > 0:
-            b.available_copies -= 1
-            loan_records.append(Loan(
-                user_id=reader.id,
-                book_id=b.id,
-                status=LOAN_BORROWING,
-                requested_at=now - timedelta(days=rnd.randint(2, 6)),
-                approved_at=now - timedelta(days=rnd.randint(1, 2)),
-                due_date=today + timedelta(days=rnd.randint(4, 12)),
-                processed_by=admin.id,
-            ))
+    # Helper lấy 1 copy available của sách
+    def get_available_copy(book: Book):
+        for cp in book.copies:
+            if cp.status == COPY_AVAILABLE:
+                return cp
+        return None
 
-    # 2. Các lượt mượn đã QUÁ HẠN (để demo cờ đỏ quá hạn, tính tiền phạt tạm tính)
-    for reader in readers[3:8]:
-        b = next_book()
-        if b.available_copies > 0:
-            b.available_copies -= 1
-            overdue_days = rnd.randint(2, 14)
-            loan_records.append(Loan(
-                user_id=reader.id,
-                book_id=b.id,
-                status=LOAN_BORROWING,
-                requested_at=now - timedelta(days=22),
-                approved_at=now - timedelta(days=20),
-                due_date=today - timedelta(days=overdue_days),
-                processed_by=admin.id,
-            ))
+    # 1. Các lượt mượn bình thường (đang mượn, còn hạn)
+    for reader in readers[:6]:
+        book = pool[slip_counter % len(pool)]
+        copy = get_available_copy(book)
+        if not copy:
+            continue
+        copy.status = COPY_BORROWED
+        book.available_copies = max(0, book.available_copies - 1)
 
-    # 3. Các lượt đã trả nhưng CHƯA THU TIỀN PHẠT (fine_paid=False) -> để Admin demo thu tiền tại /admin/fines
-    for reader in readers[8:13]:
-        b = next_book()
-        borrow_days = rnd.randint(16, 22)
-        overdue_d = borrow_days - 14
-        fine = overdue_d * 5000
-        loan_records.append(Loan(
+        slip = LoanSlip(
+            code=make_slip_code(),
             user_id=reader.id,
-            book_id=b.id,
-            status=LOAN_RETURNED,
-            requested_at=now - timedelta(days=borrow_days + 4),
-            approved_at=now - timedelta(days=borrow_days + 2),
-            due_date=today - timedelta(days=overdue_d),
-            returned_at=now - timedelta(days=rnd.randint(1, 3)),
-            fine_amount=fine,
-            fine_paid=False,  # Chưa nộp phạt
+            slip_type=SLIP_TYPE_ONLINE,
+            status=LOAN_BORROWING,
+            created_at=now - timedelta(days=rnd.randint(3, 7)),
+            approved_at=now - timedelta(days=rnd.randint(2, 5)),
+            pickup_deadline=now - timedelta(days=rnd.randint(1, 3)),
+            borrowed_at=now - timedelta(days=rnd.randint(1, 4)),
+            due_date=today + timedelta(days=rnd.randint(5, 12)),
             processed_by=admin.id,
-        ))
+        )
+        db.session.add(slip)
+        db.session.flush()
 
-    # 4. Các lượt đã trả đúng hạn hoặc đã nộp phạt đủ
-    for reader in readers[5:15]:
-        b = next_book()
-        borrow_days = rnd.randint(5, 12)
-        loan_records.append(Loan(
+        loan = Loan(
+            slip_id=slip.id,
             user_id=reader.id,
-            book_id=b.id,
-            status=LOAN_RETURNED,
-            requested_at=now - timedelta(days=borrow_days + 3),
-            approved_at=now - timedelta(days=borrow_days + 1),
-            due_date=today + timedelta(days=5),
-            returned_at=now - timedelta(days=rnd.randint(1, 4)),
-            fine_amount=0,
-            fine_paid=True,
+            book_id=book.id,
+            copy_id=copy.id,
+            status=LOAN_BORROWING,
+            requested_at=slip.created_at,
+            approved_at=slip.approved_at,
+            borrowed_at=slip.borrowed_at,
+            due_date=slip.due_date,
             processed_by=admin.id,
-        ))
-
-    # 5. Các yêu cầu CHỜ DUYỆT (pending) -> để Admin demo duyệt/từ chối tại /admin/loans
-    for reader in readers[12:18]:
-        b = next_book()
-        loan_records.append(Loan(
-            user_id=reader.id,
-            book_id=b.id,
-            status=LOAN_PENDING,
-            requested_at=now - timedelta(hours=rnd.randint(2, 36)),
-        ))
-
-    # 6. Các yêu cầu BỊ TỪ CHỐI (rejected)
-    rejection_reasons = [
-        "Sách đang trong đợt bảo quản định kỳ.",
-        "Đầu sách này tạm thời chỉ phục vụ đọc tại chỗ.",
-        "Thông tin thẻ độc giả cần đối chiếu lại tại quầy.",
-    ]
-    for i, reader in enumerate(readers[1:4]):
-        b = next_book()
-        loan_records.append(Loan(
-            user_id=reader.id,
-            book_id=b.id,
-            status=LOAN_REJECTED,
-            requested_at=now - timedelta(days=rnd.randint(3, 7)),
-            note=rejection_reasons[i % len(rejection_reasons)],
-            processed_by=admin.id,
-        ))
-
-    # 7. Các yêu cầu ĐÃ HUỶ (cancelled) do độc giả
-    for reader in readers[6:9]:
-        b = next_book()
-        loan_records.append(Loan(
-            user_id=reader.id,
-            book_id=b.id,
-            status=LOAN_CANCELLED,
-            requested_at=now - timedelta(days=rnd.randint(1, 4)),
-        ))
-
-    for loan in loan_records:
+        )
         db.session.add(loan)
 
+    # 2. Các lượt mượn ĐÃ QUÁ HẠN (để demo kiểm tra phạt trễ hạn)
+    for reader in readers[6:10]:
+        book = pool[slip_counter % len(pool)]
+        copy = get_available_copy(book)
+        if not copy:
+            continue
+        copy.status = COPY_BORROWED
+        book.available_copies = max(0, book.available_copies - 1)
+        overdue_d = rnd.randint(3, 10)
+
+        slip = LoanSlip(
+            code=make_slip_code(),
+            user_id=reader.id,
+            slip_type=SLIP_TYPE_DIRECT, # Demo mượn trực tiếp tại quầy
+            status=LOAN_BORROWING,
+            created_at=now - timedelta(days=14 + overdue_d),
+            borrowed_at=now - timedelta(days=14 + overdue_d),
+            due_date=today - timedelta(days=overdue_d),
+            processed_by=admin.id,
+        )
+        db.session.add(slip)
+        db.session.flush()
+
+        loan = Loan(
+            slip_id=slip.id,
+            user_id=reader.id,
+            book_id=book.id,
+            copy_id=copy.id,
+            status=LOAN_BORROWING,
+            requested_at=slip.created_at,
+            borrowed_at=slip.borrowed_at,
+            due_date=slip.due_date,
+            processed_by=admin.id,
+        )
+        db.session.add(loan)
+
+    # 3. Các yêu cầu CHỜ LẤY SÁCH TẠI QUẦY (READY_FOR_PICKUP - trong 48h)
+    for reader in readers[10:13]:
+        book = pool[slip_counter % len(pool)]
+        copy = get_available_copy(book)
+        if not copy:
+            continue
+        copy.status = COPY_RESERVED
+        book.available_copies = max(0, book.available_copies - 1)
+
+        approved_time = now - timedelta(hours=rnd.randint(4, 20))
+        pickup_deadline = approved_time + timedelta(hours=48)
+
+        slip = LoanSlip(
+            code=make_slip_code(),
+            user_id=reader.id,
+            slip_type=SLIP_TYPE_ONLINE,
+            status=LOAN_READY,
+            created_at=approved_time - timedelta(hours=2),
+            approved_at=approved_time,
+            pickup_deadline=pickup_deadline,
+            processed_by=admin.id,
+        )
+        db.session.add(slip)
+        db.session.flush()
+
+        loan = Loan(
+            slip_id=slip.id,
+            user_id=reader.id,
+            book_id=book.id,
+            copy_id=copy.id,
+            status=LOAN_READY,
+            requested_at=slip.created_at,
+            approved_at=slip.approved_at,
+            pickup_deadline=slip.pickup_deadline,
+            processed_by=admin.id,
+        )
+        db.session.add(loan)
+
+    # 4. Các yêu cầu CHỜ DUYỆT ONLINE (PENDING)
+    for reader in readers[13:16]:
+        book = pool[slip_counter % len(pool)]
+        slip = LoanSlip(
+            code=make_slip_code(),
+            user_id=reader.id,
+            slip_type=SLIP_TYPE_ONLINE,
+            status=LOAN_PENDING,
+            created_at=now - timedelta(hours=rnd.randint(1, 12)),
+        )
+        db.session.add(slip)
+        db.session.flush()
+
+        loan = Loan(
+            slip_id=slip.id,
+            user_id=reader.id,
+            book_id=book.id,
+            status=LOAN_PENDING,
+            requested_at=slip.created_at,
+        )
+        db.session.add(loan)
+
+    # 5. Các lượt đã trả nhưng CÒN NỢ TIỀN PHẠT TRỄ HẠN (fine_paid=False)
+    for reader in readers[1:4]:
+        book = pool[slip_counter % len(pool)]
+        copy = book.copies[0] if book.copies else None
+        fine = rnd.randint(2, 6) * 5000
+
+        slip = LoanSlip(
+            code=make_slip_code(),
+            user_id=reader.id,
+            slip_type=SLIP_TYPE_ONLINE,
+            status=LOAN_RETURNED,
+            created_at=now - timedelta(days=25),
+            borrowed_at=now - timedelta(days=23),
+            due_date=today - timedelta(days=9),
+            completed_at=now - timedelta(days=2),
+            processed_by=admin.id,
+        )
+        db.session.add(slip)
+        db.session.flush()
+
+        loan = Loan(
+            slip_id=slip.id,
+            user_id=reader.id,
+            book_id=book.id,
+            copy_id=copy.id if copy else None,
+            status=LOAN_RETURNED,
+            requested_at=slip.created_at,
+            borrowed_at=slip.borrowed_at,
+            due_date=slip.due_date,
+            returned_at=slip.completed_at,
+            fine_overdue=fine,
+            fine_amount=fine,
+            fine_paid=False,
+            processed_by=admin.id,
+        )
+        db.session.add(loan)
+
+    # 6. Một lượt HƯ HỎNG SÁCH (50% giá sách)
+    damaged_reader = readers[4]
+    damaged_book = pool[slip_counter % len(pool)]
+    damaged_copy = damaged_book.copies[0] if damaged_book.copies else None
+    if damaged_copy:
+        damaged_copy.status = COPY_DAMAGED
+        damaged_copy.condition = "Rách gáy / ướt mép"
+        damaged_book.available_copies = max(0, damaged_book.available_copies - 1)
+
+    dmg_fine = int(damaged_book.price * 0.5)
+    slip_dmg = LoanSlip(
+        code=make_slip_code(),
+        user_id=damaged_reader.id,
+        slip_type=SLIP_TYPE_DIRECT,
+        status=LOAN_RETURNED,
+        created_at=now - timedelta(days=10),
+        borrowed_at=now - timedelta(days=10),
+        due_date=today + timedelta(days=4),
+        completed_at=now - timedelta(days=1),
+        processed_by=admin.id,
+    )
+    db.session.add(slip_dmg)
     db.session.flush()
-    print(f"✓ Tạo {len(loan_records)} loan records mẫu đa dạng.")
 
+    loan_dmg = Loan(
+        slip_id=slip_dmg.id,
+        user_id=damaged_reader.id,
+        book_id=damaged_book.id,
+        copy_id=damaged_copy.id if damaged_copy else None,
+        status=LOAN_DAMAGED,
+        requested_at=slip_dmg.created_at,
+        borrowed_at=slip_dmg.borrowed_at,
+        due_date=slip_dmg.due_date,
+        returned_at=slip_dmg.completed_at,
+        damage_percent=50,
+        fine_damage=dmg_fine,
+        fine_amount=dmg_fine,
+        fine_paid=False,
+        note="Độc giả làm rách gáy và ố bìa sách (phạt 50% giá bìa)",
+        processed_by=admin.id,
+    )
+    db.session.add(loan_dmg)
 
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
+    # 7. Một lượt BÁO MẤT SÁCH (100% giá sách)
+    lost_reader = readers[5]
+    lost_book = pool[slip_counter % len(pool)]
+    lost_copy = lost_book.copies[0] if lost_book.copies else None
+    if lost_copy:
+        lost_copy.status = COPY_LOST
+        lost_book.available_copies = max(0, lost_book.available_copies - 1)
+
+    lost_fine = lost_book.price
+    slip_lost = LoanSlip(
+        code=make_slip_code(),
+        user_id=lost_reader.id,
+        slip_type=SLIP_TYPE_DIRECT,
+        status=LOAN_RETURNED,
+        created_at=now - timedelta(days=20),
+        borrowed_at=now - timedelta(days=20),
+        due_date=today - timedelta(days=6),
+        completed_at=now - timedelta(days=1),
+        processed_by=admin.id,
+    )
+    db.session.add(slip_lost)
+    db.session.flush()
+
+    loan_lost = Loan(
+        slip_id=slip_lost.id,
+        user_id=lost_reader.id,
+        book_id=lost_book.id,
+        copy_id=lost_copy.id if lost_copy else None,
+        status=LOAN_LOST,
+        requested_at=slip_lost.created_at,
+        borrowed_at=slip_lost.borrowed_at,
+        due_date=slip_lost.due_date,
+        returned_at=slip_lost.completed_at,
+        damage_percent=100,
+        fine_overdue=6 * 5000,
+        fine_damage=lost_fine,
+        fine_amount=lost_fine + 30000,
+        fine_paid=False,
+        note="Độc giả báo làm mất sách trên xe buýt (bồi thường 100% giá bìa + phạt quá hạn)",
+        processed_by=admin.id,
+    )
+    db.session.add(loan_lost)
+
+    db.session.commit()
+    print(f"✓ Tạo các phiếu mượn (LoanSlip) và chi tiết (Loan/LoanItem) mẫu phong phú.")
+
 
 def main():
     reset = "--reset" in sys.argv
@@ -347,11 +512,11 @@ def main():
         else:
             print(f"– {len(readers)} độc giả mẫu đã tồn tại.")
 
-        # 4. Sách
+        # 4. Sách & Bản sao BookCopy
         books = _seed_books(cat_cache)
 
-        # 5. Loans mẫu
-        if reset or Loan.query.count() == 0:
+        # 5. Phiếu mượn và Lượt mượn mẫu
+        if reset or LoanSlip.query.count() == 0:
             _seed_loans(readers, books if books else Book.query.all(), admin)
 
         db.session.commit()

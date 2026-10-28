@@ -3,66 +3,121 @@
 {% block title %}Sách của tôi{% endblock %}
 {% block content %}
 {% set n_borrow = loans|selectattr('status','equalto','borrowing')|list|length %}
+{% set n_ready = loans|selectattr('status','equalto','ready_for_pickup')|list|length %}
 {% set n_pending = loans|selectattr('status','equalto','pending')|list|length %}
 {% set n_late = loans|selectattr('is_overdue')|list|length %}
 
 <div class="page-head" data-reveal>
-  <div><span class="eyebrow">{{ icon('book') }} Thư viện cá nhân</span><h1 class="mt-1">Sách của tôi</h1></div>
-  <a class="btn btn-primary" href="{{ url_for('main.index') }}">{{ icon('plus') }} Mượn thêm sách</a>
+  <div>
+    <span class="eyebrow">{{ icon('book') }} Thư viện cá nhân</span>
+    <h1 class="mt-1">Sách của tôi &amp; Phiếu mượn</h1>
+  </div>
+  <div class="flex gap-1">
+    <a class="btn btn-secondary" href="{{ url_for('main.cart') }}">{{ icon('layers') }} Giỏ mượn ({{ cart_count }})</a>
+    <a class="btn btn-primary" href="{{ url_for('main.index') }}">{{ icon('plus') }} Tra cứu thêm sách</a>
+  </div>
 </div>
 
 {% if unpaid %}
-<div class="alert alert-danger" data-reveal>{{ icon('alert') }}<div>Bạn đang có <b>{{ unpaid|vnd }}</b> tiền phạt chưa thanh toán. Vui lòng nộp phạt tại quầy thủ thư để tiếp tục mượn sách.</div></div>
+<div class="alert alert-danger" data-reveal>
+  {{ icon('alert') }}
+  <div>Bạn đang có <b>{{ unpaid|vnd }}</b> tiền phạt chưa thanh toán. Vui lòng nộp phạt tại quầy thủ thư để tiếp tục mượn sách.</div>
+</div>
 {% endif %}
 
 <div class="summary" data-stagger>
   <div class="card sum-card" data-reveal><div class="sum-ico tone-primary">{{ icon('book') }}</div><div><b data-count="{{ n_borrow }}">{{ n_borrow }}</b><span>Đang mượn</span></div></div>
+  <div class="card sum-card" data-reveal><div class="sum-ico tone-info">{{ icon('clock') }}</div><div><b data-count="{{ n_ready }}">{{ n_ready }}</b><span>Chờ lấy (48h)</span></div></div>
   <div class="card sum-card" data-reveal><div class="sum-ico tone-warning">{{ icon('clock') }}</div><div><b data-count="{{ n_pending }}">{{ n_pending }}</b><span>Chờ duyệt</span></div></div>
   <div class="card sum-card" data-reveal><div class="sum-ico tone-danger">{{ icon('alert') }}</div><div><b data-count="{{ n_late }}">{{ n_late }}</b><span>Quá hạn</span></div></div>
-  <div class="card sum-card" data-reveal><div class="sum-ico tone-success">{{ icon('coins') }}</div><div><b style="font-size:1.25rem">{{ unpaid|vnd }}</b><span>Tiền phạt chưa nộp</span></div></div>
+  <div class="card sum-card" data-reveal><div class="sum-ico tone-success">{{ icon('coins') }}</div><div><b style="font-size:1.25rem">{{ unpaid|vnd }}</b><span>Nợ phạt chưa nộp</span></div></div>
 </div>
 
 {% if loans %}
 <div class="tabs" role="tablist">
   <button class="tab active" data-filter="all">Tất cả ({{ loans|length }})</button>
-  <button class="tab" data-filter="borrowing">Đang mượn</button>
-  <button class="tab" data-filter="pending">Chờ duyệt</button>
-  <button class="tab" data-filter="done">Lịch sử</button>
+  <button class="tab" data-filter="ready">Chờ lấy tại quầy ({{ n_ready }})</button>
+  <button class="tab" data-filter="borrowing">Đang mượn ({{ n_borrow }})</button>
+  <button class="tab" data-filter="pending">Chờ duyệt ({{ n_pending }})</button>
+  <button class="tab" data-filter="done">Lịch sử hoàn tất</button>
 </div>
 
 <div class="loan-list" data-stagger>
   {% for l in loans %}
-  {% set group = 'borrowing' if l.status == 'borrowing' else 'pending' if l.status == 'pending' else 'done' %}
+  {% set group = 'ready' if l.status == 'ready_for_pickup' else 'borrowing' if l.status == 'borrowing' else 'pending' if l.status == 'pending' else 'done' %}
   <article class="card loan-card" data-reveal data-group="{{ group }}"
-    {% if l.status == 'borrowing' and l.due_date %}data-due="{{ l.due_date.isoformat() }}" data-start="{{ l.approved_at.isoformat() if l.approved_at }}"{% endif %}>
+    {% if l.status == 'borrowing' and l.due_date %}data-due="{{ l.due_date.isoformat() }}" data-start="{{ l.borrowed_at.isoformat() if l.borrowed_at }}"{% endif %}>
     {{ cover(l.book) }}
     <div class="loan-info">
-      <div class="flex items-center gap-1 wrap">
+      <div class="flex items-center gap-1 wrap mb-1">
         <h3><a href="{{ url_for('main.book_detail', book_id=l.book_id) }}" style="color:inherit">{{ l.book.title }}</a></h3>
         {{ status_badge(l) }}
+        {% if l.slip %}
+          <a class="barcode-badge" href="{{ url_for('main.slip_detail', slip_id=l.slip_id) }}" title="Xem chi tiết phiếu mượn &amp; in phiếu">
+            {{ icon('layers') }} {{ l.slip.code }}
+          </a>
+        {% endif %}
       </div>
-      <div class="muted small">{{ l.book.author }}</div>
-      <div class="loan-meta">
+
+      <div class="muted small">{{ l.book.author }} · Vị trí: <b>{{ l.book.location or 'Kho tổng hợp' }}</b></div>
+
+      {% if l.copy %}
+        <div class="small mt-1">
+          Mã vạch bản sao: <span class="code-tag font-mono">{{ l.copy.barcode }}</span>
+        </div>
+      {% endif %}
+
+      <div class="loan-meta mt-2">
         <span>Yêu cầu: {{ l.requested_at|dt('%d/%m/%Y') }}</span>
+        {% if l.status == 'ready_for_pickup' and l.pickup_deadline %}
+          <span style="color:var(--color-clay);font-weight:600">
+            Giữ tại quầy đến: {{ l.pickup_deadline|dt('%H:%M %d/%m') }}
+          </span>
+        {% endif %}
         {% if l.due_date %}<span>Hạn trả: <b>{{ l.due_date.strftime('%d/%m/%Y') }}</b></span>{% endif %}
-        {% if l.returned_at %}<span>Đã trả: {{ l.returned_at|dt('%d/%m/%Y') }}</span>{% endif %}
-        {% if l.current_fine %}<span style="color:var(--{{ 'success' if l.fine_paid else 'danger' }});font-weight:600">Phạt: {{ l.current_fine|vnd }}{{ ' (đã nộp)' if l.fine_paid }}</span>{% endif %}
+        {% if l.returned_at %}<span>Đã xử lý: {{ l.returned_at|dt('%d/%m/%Y') }}</span>{% endif %}
+        {% if l.fine_amount %}
+          <span style="color:var(--{{ 'success' if l.fine_paid else 'danger' }});font-weight:600">
+            Phạt: {{ l.fine_amount|vnd }}{{ ' (đã nộp)' if l.fine_paid else ' (chưa nộp)' }}
+          </span>
+        {% endif %}
       </div>
-      {% if l.status == 'rejected' and l.note %}<div class="small mt-1" style="color:var(--danger)">Lý do từ chối: {{ l.note }}</div>{% endif %}
+
+      {% if l.status == 'rejected' and l.note %}
+        <div class="small mt-1" style="color:var(--color-danger)">Lý do từ chối: {{ l.note }}</div>
+      {% endif %}
+
+      {% if l.status == 'ready_for_pickup' %}
+        <div class="alert alert-info mt-2 py-1 px-2 small">
+          {{ icon('clock') }} Sách đã sẵn sàng tại bàn tiếp nhận thư viện. Vui lòng mang thẻ sinh viên hoặc đọc mã phiếu <b>{{ l.slip.code if l.slip else '' }}</b> để nhận sách trước thời hạn.
+        </div>
+      {% endif %}
+
       {% if l.status == 'borrowing' and l.due_date %}
         <div class="due {{ 'late' if l.is_overdue }}"><div class="due-bar"><i style="--p:{{ 100 if l.is_overdue else 0 }}"></i></div>
           <div class="due-text">{% if l.is_overdue %}Quá hạn {{ l.overdue_days }} ngày{% else %}Đến hạn {{ l.due_date.strftime('%d/%m/%Y') }}{% endif %}</div></div>
       {% endif %}
     </div>
+
     <div class="loan-actions">
-      {% if l.status == 'pending' %}
-        <form method="post" action="{{ url_for('main.cancel', loan_id=l.id) }}" data-confirm="Bạn có chắc chắn muốn huỷ yêu cầu mượn cuốn “{{ l.book.title }}”?">{{ csrf() }}<button class="btn btn-ghost btn-sm">{{ icon('x') }} Huỷ yêu cầu</button></form>
+      {% if l.status in ('pending', 'ready_for_pickup') %}
+        <form method="post" action="{{ url_for('main.cancel', loan_id=l.id) }}" data-confirm="Bạn có chắc chắn muốn huỷ yêu cầu mượn cuốn “{{ l.book.title }}”?">
+          {{ csrf() }}
+          <button class="btn btn-ghost btn-sm">{{ icon('x') }} Huỷ yêu cầu</button>
+        </form>
       {% elif l.status == 'borrowing' and not l.is_overdue %}
         {% if l.renew_count < config.MAX_RENEWALS %}
-          <form method="post" action="{{ url_for('main.renew', loan_id=l.id) }}" data-confirm="Xác nhận gia hạn thêm {{ config.RENEW_DAYS }} ngày cho cuốn sách “{{ l.book.title }}”?">{{ csrf() }}<button class="btn btn-primary btn-sm">{{ icon('refresh') }} Gia hạn (+{{ config.RENEW_DAYS }} ngày)</button></form>
+          <form method="post" action="{{ url_for('main.renew', loan_id=l.id) }}" data-confirm="Xác nhận gia hạn thêm {{ config.RENEW_DAYS }} ngày cho cuốn sách “{{ l.book.title }}”?">
+            {{ csrf() }}
+            <button class="btn btn-primary btn-sm">{{ icon('refresh') }} Gia hạn (+{{ config.RENEW_DAYS }} ngày)</button>
+          </form>
         {% else %}
           <span class="badge badge-secondary" title="Bạn đã dùng hết số lần gia hạn cho cuốn sách này">{{ icon('check') }} Đã gia hạn ({{ l.renew_count }}/{{ config.MAX_RENEWALS }})</span>
         {% endif %}
+      {% endif %}
+
+      {% if l.slip %}
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('main.slip_detail', slip_id=l.slip_id) }}" title="Xem và in phiếu mượn">{{ icon('layers') }} Xem phiếu</a>
       {% endif %}
     </div>
   </article>

@@ -37,7 +37,13 @@
     <nav class="nav-links" id="nav-links">
       <a class="nav-link {{ 'active' if request.endpoint in ('main.index','main.book_detail') }}" href="{{ url_for('main.index') }}">{{ icon('search') }} Tra cứu sách</a>
       {% if current_user.is_authenticated and not current_user.is_admin %}
-      <a class="nav-link {{ 'active' if request.endpoint == 'main.my_loans' }}" href="{{ url_for('main.my_loans') }}">{{ icon('book') }} Sách của tôi</a>
+      <a class="nav-link {{ 'active' if request.endpoint == 'main.cart' }}" href="{{ url_for('main.cart') }}" title="Giỏ mượn sách">
+        {{ icon('layers') }} Giỏ mượn
+        {% if cart_count > 0 %}
+          <span class="badge badge-warning cart-nav-badge">{{ cart_count }}</span>
+        {% endif %}
+      </a>
+      <a class="nav-link {{ 'active' if request.endpoint in ('main.my_loans', 'main.slip_detail') }}" href="{{ url_for('main.my_loans') }}">{{ icon('book') }} Sách của tôi</a>
       {% endif %}
       {% if current_user.is_authenticated and current_user.is_admin %}
       <a class="nav-link {{ 'active' if request.blueprint == 'admin' }}" href="{{ url_for('admin.dashboard') }}">{{ icon('chart') }} Quản trị</a>
@@ -97,24 +103,44 @@
             <span class="brand-main">Kinh tế Quốc dân</span>
           </span>
         </a>
-        <p class="muted mt-2" style="max-width:380px">Hệ thống quản lý mượn trả sách trực tuyến: tra cứu nhanh, gửi yêu cầu mượn và theo dõi hạn trả ngay trên điện thoại hoặc máy tính.</p>
+        <p class="muted mt-2" style="max-width:380px">Hệ thống quản lý mượn trả sách trực tuyến: tra cứu nhanh, giỏ mượn tài liệu, nhận sách tại quầy và theo dõi hạn trả minh bạch.</p>
       </div>
-      <div><h4>Liên kết</h4><ul>
-        <li><a href="{{ url_for('main.index') }}">Tra cứu sách</a></li>
-        {% if current_user.is_authenticated and not current_user.is_admin %}<li><a href="{{ url_for('main.my_loans') }}">Sách của tôi</a></li>{% endif %}
-        {% if not current_user.is_authenticated %}<li><a href="{{ url_for('auth.login') }}">Đăng nhập</a></li><li><a href="{{ url_for('auth.register') }}">Đăng ký độc giả</a></li>{% endif %}
-      </ul></div>
-      <div><h4>Quy định mượn</h4><ul class="muted">
-        <li>Thời hạn: {{ config.LOAN_DAYS }} ngày, gia hạn {{ config.MAX_RENEWALS }} lần</li>
-        <li>Tối đa {{ config.MAX_ACTIVE_LOANS }} cuốn cùng lúc</li>
-        <li>Phạt trả muộn: {{ '{:,}'.format(config.FINE_PER_DAY).replace(',', '.') }} đ/ngày</li>
-      </ul></div>
+      <div>
+        <div class="footer-col-title">Quy định mượn trả</div>
+        <ul class="footer-links">
+          <li>Mượn tối đa 5 cuốn cùng lúc</li>
+          <li>Thời hạn mượn 14 ngày / lượt</li>
+          <li>Gia hạn tối đa 1 lần (+7 ngày)</li>
+          <li>Giữ chỗ trực tuyến tối đa 48 giờ</li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-col-title">Biểu phí bồi thường</div>
+        <ul class="footer-links">
+          <li>Quá hạn: 5.000 đ / ngày / cuốn</li>
+          <li>Hư hại nhẹ (25% giá bìa)</li>
+          <li>Hư hại vừa (50% giá bìa)</li>
+          <li>Hỏng nặng/Mất (100% giá bìa)</li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-col-title">Hỗ trợ độc giả</div>
+        <ul class="footer-links">
+          <li>Tòa nhà Thư viện trung tâm NEU</li>
+          <li>Số 207 Giải Phóng, Đồng Tâm, Hà Nội</li>
+          <li>Email: thuvien@neu.edu.vn</li>
+          <li>Hotline: (024) 36 280 280</li>
+        </ul>
+      </div>
     </div>
-    <div class="copy">© 2026 Thư viện NEU · Bài tập nhóm môn Lập trình Web</div>
+    <div class="footer-bottom">
+      <span>© 2026 Thư viện Đại học Kinh tế Quốc dân (NEU). Nhóm bài tập lớn Lập trình Web.</span>
+      <span class="footer-author">Anthropic Parchment Style System</span>
+    </div>
   </div>
 </footer>
 
-<button class="to-top" type="button" aria-label="Lên đầu trang">{{ icon('up') }}</button>
-<script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+<button class="icon-btn to-top" type="button" aria-label="Lên đầu trang">{{ icon('chevron-up') }}</button>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>

@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, render_template, request
+from flask_login import current_user
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 
@@ -32,6 +33,18 @@ def create_app(config_object=Config):
 
     with app.app_context():
         db.create_all()
+
+    from .models import CartItem
+
+    @app.context_processor
+    def inject_cart():
+        count = 0
+        if current_user.is_authenticated and not current_user.is_admin:
+            try:
+                count = CartItem.query.filter_by(user_id=current_user.id).count()
+            except Exception:
+                count = 0
+        return {"cart_count": count}
 
     @app.template_filter("vnd")
     def vnd(value):

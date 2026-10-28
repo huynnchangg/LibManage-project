@@ -5,17 +5,25 @@
 <div class="page-head" data-reveal>
   <div>
     <span class="eyebrow">{{ icon('book') }} Quản trị tài liệu</span>
-    <h1 class="mt-1">Quản lý kho sách</h1>
+    <h1 class="mt-1">Quản lý kho sách &amp; bản sao</h1>
   </div>
   <a class="btn btn-primary" href="{{ url_for('admin.book_new') }}">{{ icon('plus') }} Thêm sách mới</a>
 </div>
 
 <div class="admin-toolbar" data-reveal>
-  <form class="search-form-admin" method="get">
-    <span class="search-icon">{{ icon('search') }}</span>
-    <input name="q" value="{{ request.args.q or '' }}" class="input input-search-admin" placeholder="Tìm kiếm theo tên sách, tác giả, ISBN…">
-    <button class="btn btn-search-admin" type="submit">Tìm kiếm</button>
-    {% if request.args.q %}
+  <form class="admin-filter-bar" method="get">
+    <div class="search-form-admin">
+      <span class="search-icon">{{ icon('search') }}</span>
+      <input name="q" value="{{ q or '' }}" class="input input-search-admin" placeholder="Tìm kiếm theo tên sách, tác giả, ISBN…">
+      <button class="btn btn-search-admin" type="submit">Tìm kiếm</button>
+    </div>
+    <select name="category" class="filter-category-select" onchange="this.form.submit()">
+      <option value="">— Tất cả thể loại —</option>
+      {% for c in categories %}
+      <option value="{{ c.id }}" {{ 'selected' if category_id == c.id }}>{{ c.name }}</option>
+      {% endfor %}
+    </select>
+    {% if q or category_id %}
     <a class="btn btn-reset-search" href="{{ url_for('admin.books') }}">{{ icon('x') }} Đặt lại</a>
     {% endif %}
   </form>
@@ -26,19 +34,20 @@
   <table class="table table-books">
     <thead>
       <tr>
-        <th class="col-stt">STT</th>
-        <th style="min-width: 240px;">Thông tin ấn bản</th>
-        <th style="min-width: 140px;">Chuyên mục / Thể loại</th>
-        <th style="min-width: 130px;">Tình trạng kho</th>
-        <th style="min-width: 110px;">Vị trí lưu</th>
-        <th class="text-right" style="min-width: 170px; padding-right: 20px;">Thao tác</th>
+        <th class="col-stt text-center">STT</th>
+        <th class="col-book-info">Thông tin ấn bản</th>
+        <th class="col-cat text-center">Chuyên mục</th>
+        <th class="col-price text-right">Giá bìa</th>
+        <th class="col-stock text-center">Tình trạng kho</th>
+        <th class="col-shelf text-center">Vị trí kệ</th>
+        <th class="col-actions text-right">Thao tác</th>
       </tr>
     </thead>
     <tbody>
     {% for b in pagination.items %}
-    <tr>
-      <td class="col-stt muted">{{ (pagination.page - 1) * pagination.per_page + loop.index }}</td>
-      <td>
+    <tr class="{{ 'opacity-60' if not b.is_active }}">
+      <td class="col-stt text-center muted">{{ (pagination.page - 1) * pagination.per_page + loop.index }}</td>
+      <td class="col-book-info">
         <div class="book-media-cell">
           <div class="book-mini-cover">
             {% if b.cover_url %}
@@ -50,33 +59,44 @@
           <div class="book-info-col">
             <div class="book-admin-title">
               <a href="{{ url_for('main.book_detail', book_id=b.id) }}" target="_blank" title="Xem trang độc giả"><b>{{ b.title }}</b></a>
+              {% if not b.is_active %}
+                <span class="badge badge-secondary small ml-1">Đang ẩn</span>
+              {% endif %}
             </div>
-            <div class="small muted">{{ b.author }}{% if b.year %} · {{ b.year }}{% endif %}{% if b.isbn %} · ISBN: {{ b.isbn }}{% endif %}</div>
+            <div class="small muted">{{ b.author }}{% if b.year %} · {{ b.year }}{% endif %}{% if b.isbn %} · ISBN: <span class="font-mono">{{ b.isbn }}</span>{% endif %}</div>
           </div>
         </div>
       </td>
-      <td>
+      <td class="col-cat text-center">
         {% if b.category %}
-          <span class="badge badge-category">
-            <span class="category-dot"></span>{{ b.category.name }}
-          </span>
+          <span class="badge badge-category"><span class="category-dot"></span>{{ b.category.name }}</span>
         {% else %}
           <span class="badge badge-secondary">Chưa phân loại</span>
         {% endif %}
       </td>
-      <td>
+      <td class="col-price text-right">
+        <b class="price-tag text-nowrap">{{ b.price|vnd }}</b>
+      </td>
+      <td class="col-stock text-center">
         <div class="stock-pill {{ 'stock-ok' if b.available_copies > 0 else 'stock-out' }}">
           <span class="stock-dot"></span>
           <b>{{ b.available_copies }}</b> / {{ b.total_copies }} bản
         </div>
+        <div class="small mt-1">
+          <a href="{{ url_for('admin.book_copies', book_id=b.id) }}" style="color:var(--color-clay);font-weight:600">Xem {{ b.copies|length }} mã vạch →</a>
+        </div>
       </td>
-      <td>
+      <td class="col-shelf text-center">
         <span class="location-tag">{{ b.location or 'Kho tổng hợp' }}</span>
       </td>
-      <td class="text-right">
+      <td class="col-actions text-right">
         <div class="row-actions">
           <a class="btn btn-ghost btn-sm btn-action-book" href="{{ url_for('admin.book_edit', book_id=b.id) }}" title="Chỉnh sửa thông tin">{{ icon('edit') }} Sửa</a>
-          <form method="post" action="{{ url_for('admin.book_delete', book_id=b.id) }}" data-confirm="Xác nhận xoá ấn bản “{{ b.title }}”? Thao tác này sẽ xoá vĩnh viễn đầu sách khỏi hệ thống thư viện.">
+          <form method="post" action="{{ url_for('admin.book_toggle', book_id=b.id) }}" title="{{ 'Ẩn khỏi độc giả' if b.is_active else 'Mở lưu hành lại' }}">
+            {{ csrf() }}
+            <button class="btn btn-ghost btn-sm btn-action-book">{{ icon('eye') }} {{ 'Ẩn' if b.is_active else 'Mở' }}</button>
+          </form>
+          <form method="post" action="{{ url_for('admin.book_delete', book_id=b.id) }}" data-confirm="Xác nhận xoá ấn bản “{{ b.title }}”? Thao tác này chỉ xóa được nếu sách chưa từng có lịch sử mượn.">
             {{ csrf() }}
             <button class="btn btn-danger btn-sm btn-action-book" title="Xóa sách">{{ icon('trash') }} Xóa</button>
           </form>
@@ -87,8 +107,8 @@
     </tbody>
   </table>
 </div>
-{{ pager(pagination, 'admin.books', {'q': request.args.get('q') or None}) }}
+{{ pager(pagination, 'admin.books', {'q': q or None, 'category': category_id or None}) }}
 {% else %}
-<div class="card empty-card">{{ empty('📚', 'Không tìm thấy ấn bản phù hợp', 'Nhấn nút “Thêm sách mới” ở trên hoặc thử lại với từ khóa tra cứu khác.') }}</div>
+<div class="card empty-card">{{ empty('📚', 'Không tìm thấy ấn bản phù hợp', 'Nhấn nút “Thêm sách mới” ở trên hoặc thử lại với bộ lọc tra cứu khác.') }}</div>
 {% endif %}
 {% endblock %}

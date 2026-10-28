@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% from "macros.html" import icon %}
+{% block title %}Phiếu mượn {{ slip.code }}{% endblock %}
+{% block content %}
+<div class="page-head no-print" data-reveal>
+  <div>
+    <span class="eyebrow">
+      <a href="{{ url_for('main.my_loans') }}">{{ icon('book') }} Sách của tôi</a> /
+    </span>
+    <h1 class="mt-1">Phiếu mượn: {{ slip.code }}</h1>
+  </div>
+  <div class="flex gap-2">
+    <button type="button" class="btn btn-primary" onclick="window.print()">
+      {{ icon('check') }} In phiếu mượn
+    </button>
+    <a class="btn btn-ghost" href="{{ url_for('main.my_loans') }}">Quay lại</a>
+  </div>
+</div>
+
+<div class="slip-print-container" data-reveal>
+  <div class="slip-card">
+    {# Header phiếu in #}
+    <div class="slip-header">
+      <div class="slip-brand">
+        <div class="slip-logo-mono">NEU 1956</div>
+        <div>
+          <div class="slip-school">TRƯỜNG ĐẠI HỌC KINH TẾ QUỐC DÂN</div>
+          <div class="slip-lib">THƯ VIỆN TRUNG TÂM — PHÒNG PHỤC VỤ BẠN ĐỌC</div>
+        </div>
+      </div>
+      <div class="slip-code-box">
+        <div class="slip-code-label">MÃ PHIẾU MƯỢN</div>
+        <div class="slip-code-val">{{ slip.code }}</div>
+        <div class="slip-type-tag">{{ 'ĐĂNG KÝ TRỰC TUYẾN' if slip.slip_type == 'online' else 'MƯỢN TRỰC TIẾP TẠI QUẦY' }}</div>
+      </div>
+    </div>
+
+    <div class="slip-divider"></div>
+
+    {# Thông tin người mượn #}
+    <div class="slip-meta-grid">
+      <div>
+        <div class="slip-meta-row"><span>Họ và tên độc giả:</span> <b>{{ slip.user.full_name }}</b></div>
+        <div class="slip-meta-row"><span>Mã sinh viên:</span> <b>{{ slip.user.student_code or '—' }}</b></div>
+        <div class="slip-meta-row"><span>Email liên hệ:</span> <span>{{ slip.user.email }}</span></div>
+      </div>
+      <div>
+        <div class="slip-meta-row"><span>Ngày lập phiếu:</span> <b>{{ slip.created_at|dt }}</b></div>
+        <div class="slip-meta-row"><span>Thời hạn mượn:</span> <b>14 ngày (gia hạn tối đa 1 lần)</b></div>
+        <div class="slip-meta-row"><span>Trạng thái phiếu:</span> <span class="badge badge-primary">{{ slip.status_label[0] }}</span></div>
+      </div>
+    </div>
+
+    {# Bảng danh sách sách #}
+    <div class="slip-table-wrap">
+      <table class="table slip-table">
+        <thead>
+          <tr>
+            <th style="width:45px">STT</th>
+            <th>Tên tác phẩm &amp; Tác giả</th>
+            <th style="width:140px">Mã vạch (Barcode)</th>
+            <th style="width:130px">Vị trí lưu trữ</th>
+            <th style="width:110px">Hạn trả</th>
+            <th style="width:110px">Trạng thái</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for item in slip.items %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>
+            <b>{{ item.book.title }}</b>
+            <div class="small muted">{{ item.book.author }}</div>
+          </td>
+          <td>
+            {% if item.copy %}
+              <span class="barcode-badge font-mono">{{ item.copy.barcode }}</span>
+            {% else %}
+              <span class="muted small">— Chưa gán —</span>
+            {% endif %}
+          </td>
+          <td>{{ item.book.location or 'Kho tổng hợp' }}</td>
+          <td>{{ item.due_date.strftime('%d/%m/%Y') if item.due_date else '—' }}</td>
+          <td>{{ item.status_label[0] }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if slip.note %}
+    <div class="slip-note mt-3">
+      <b>Ghi chú:</b> {{ slip.note }}
+    </div>
+    {% endif %}
+
+    {# Quy định & Chữ ký #}
+    <div class="slip-footer-rules mt-4">
+      <div class="slip-rules-box">
+        <div class="small font-bold mb-1">LƯU Ý DÀNH CHO BẠN ĐỌC:</div>
+        <ul class="small muted" style="margin:0;padding-left:1.2rem;line-height:1.5">
+          <li>Độc giả có trách nhiệm giữ gìn sách nguyên vẹn, không viết vẽ, làm rách hoặc ướt sách.</li>
+          <li>Hoàn trả đúng hạn quy định. Tiền phạt quá hạn: 5.000 đ/ngày/cuốn.</li>
+          <li>Trường hợp làm mất hoặc hư hại: Bồi thường theo quy định hiện hành của Thư viện NEU.</li>
+        </ul>
+      </div>
+
+      <div class="slip-signatures">
+        <div class="slip-sig-col">
+          <div class="small muted">NGƯỜI NHẬN SÁCH</div>
+          <div class="slip-sig-name">{{ slip.user.full_name }}</div>
+        </div>
+        <div class="slip-sig-col">
+          <div class="small muted">THỦ THƯ BÀN GIAO</div>
+          <div class="slip-sig-name">{{ slip.processor.full_name if slip.processor else 'Thủ thư quầy' }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

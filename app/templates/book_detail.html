@@ -39,7 +39,7 @@
       <h1 class="detail-title">{{ book.title }}</h1>
       <div class="detail-author">Tác giả: <span>{{ book.author }}</span></div>
 
-      {# Khối bài viết giới thiệu tác phẩm - Đưa lên trong detail-header-grid #}
+      {# Khối bài viết giới thiệu tác phẩm #}
       {% if book.description %}
       <div class="detail-description-block">
         <div class="detail-desc-divider">
@@ -66,7 +66,7 @@
           <span class="spec-value">{{ book.publisher or '—' }}</span>
         </div>
         <div class="meta-spec-item" data-reveal>
-          <span class="spec-label">Kho lưu trữ</span>
+          <span class="spec-label">Vị trí lưu trữ</span>
           <span class="spec-value">{{ book.location or 'Kho tổng hợp' }}</span>
         </div>
         <div class="meta-spec-item" data-reveal>
@@ -88,12 +88,24 @@
               <a class="btn btn-ghost btn-lg" href="{{ url_for('admin.book_edit', book_id=book.id) }}">
                 {{ icon('edit') }} Chỉnh sửa sách
               </a>
+              <a class="btn btn-ghost btn-lg" href="{{ url_for('admin.book_copies', book_id=book.id) }}">
+                Xem {{ book.copies|length }} mã vạch
+              </a>
             {% else %}
-              <form method="post" action="{{ url_for('main.borrow', book_id=book.id) }}">{{ csrf() }}
-                <button class="btn btn-primary btn-lg" {{ 'disabled' if book.available_copies < 1 }}>
-                  {{ icon('book') }} Gửi yêu cầu mượn
-                </button>
-              </form>
+              <div class="flex gap-2 wrap">
+                <form method="post" action="{{ url_for('main.cart_add', book_id=book.id) }}">
+                  {{ csrf() }}
+                  <button class="btn btn-secondary btn-lg" {{ 'disabled' if book.available_copies < 1 }} title="Thêm vào giỏ để mượn cùng nhiều sách khác">
+                    {{ icon('layers') }} Thêm vào giỏ
+                  </button>
+                </form>
+                <form method="post" action="{{ url_for('main.borrow', book_id=book.id) }}">
+                  {{ csrf() }}
+                  <button class="btn btn-primary btn-lg" {{ 'disabled' if book.available_copies < 1 }} title="Gửi yêu cầu mượn cuốn này ngay">
+                    {{ icon('book') }} Mượn ngay 1-click
+                  </button>
+                </form>
+              </div>
             {% endif %}
           </div>
         </div>
@@ -101,7 +113,11 @@
         <div class="policy-strip">
           <div class="policy-item">
             {{ icon('clock') }}
-            <span>Thời hạn: <b>{{ config.LOAN_DAYS }} ngày</b></span>
+            <span>Hạn mượn: <b>{{ config.LOAN_DAYS }} ngày</b></span>
+          </div>
+          <div class="policy-item">
+            {{ icon('layers') }}
+            <span>Giữ chỗ tại quầy: <b>{{ config.PICKUP_HOURS }} giờ</b></span>
           </div>
           <div class="policy-item">
             {{ icon('refresh') }}

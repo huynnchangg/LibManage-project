@@ -29,7 +29,8 @@
 {% macro icon(name) %}<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">{{ _icons[name]|safe }}</svg>{% endmacro %}
 
 {% macro status_badge(loan) %}
-  {% set l = loan.status_label %}<span class="badge badge-{{ 'warning' if l[1]=='warning' else 'primary' if l[1]=='primary' else 'success' if l[1]=='success' else 'danger' if l[1]=='danger' else 'secondary' }}">{{ l[0] }}</span>
+  {% set label, tone = loan.status_label %}
+  <span class="badge badge-{{ tone }}">{{ label }}</span>
 {% endmacro %}
 
 {# Bìa sách: dùng ảnh thật nếu có cover_url, fallback về CSS #}
