@@ -49,7 +49,7 @@
       <td class="col-actions text-right">
         <div class="row-actions">
           {% if not l.fine_paid %}
-            <form method="post" action="{{ url_for('admin.fine_pay', loan_id=l.id) }}" data-confirm="Xác nhận đã thu khoản phạt {{ l.fine_amount|vnd }} từ độc giả {{ l.user.full_name }}?">
+            <form method="post" action="{{ url_for('admin.fine_pay', loan_id=l.id) }}" data-confirm="Xác nhận đã thu đầy đủ khoản phạt {{ l.fine_amount|vnd }} từ độc giả {{ l.user.full_name }}?">
               {{ csrf() }}
               <button class="btn btn-success btn-sm btn-action-fine">{{ icon('check') }} Thu tiền</button>
             </form>
@@ -64,6 +64,6 @@
   </table>
 </div>
 {% else %}
-<div class="card empty-card">{{ empty('🎉', 'Không có khoản phạt tồn đọng', 'Mọi khoản phạt đã được thu đầy đủ hoặc chưa có vi phạm phát sinh.') }}</div>
+<div class="card empty-card">{{ empty('🎉', 'Không có khoản phạt tồn đọng', 'Tất cả các khoản phạt đã được thanh toán đầy đủ hoặc chưa có vi phạm nào phát sinh.') }}</div>
 {% endif %}
 {% endblock %}

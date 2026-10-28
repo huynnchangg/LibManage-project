@@ -75,7 +75,7 @@
     </div>
     <div class="stat-card-editorial" data-reveal>
       <span class="stat-number" data-count="{{ stats.categories }}">{{ stats.categories }}</span>
-      <span class="stat-label">Chuyên mục đào tạo</span>
+      <span class="stat-label">Thể loại</span>
     </div>
   </div>
   {% endif %}
@@ -185,7 +185,7 @@
     <p class="cta-sub">Tạo tài khoản sinh viên/giảng viên miễn phí để tiếp cận toàn bộ kho tư liệu quý giá của Thư viện NEU.</p>
     <div class="cta-buttons">
       <a class="btn btn-primary btn-lg" href="{{ url_for('auth.register') }}">Đăng ký thẻ thư viện {{ icon('arrow') }}</a>
-      <a class="btn btn-ghost btn-lg" href="{{ url_for('auth.login') }}">Đã có tài khoản? Đăng nhập</a>
+      <a class="btn btn-ghost btn-lg btn-cta-login" href="{{ url_for('auth.login') }}">Đã có tài khoản? Đăng nhập</a>
     </div>
   </div>
 </section>

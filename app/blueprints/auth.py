@@ -22,13 +22,13 @@ def login():
         user = User.query.filter_by(username=request.form.get("username", "").strip()).first()
         if user and user.check_password(request.form.get("password", "")):
             if not user.active:
-                flash("Tài khoản đã bị khoá, liên hệ thủ thư.", "danger")
+                flash("Tài khoản độc giả đã bị khóa. Vui lòng liên hệ thủ thư tại quầy để được hỗ trợ.", "danger")
             else:
                 login_user(user)
                 default = "admin.dashboard" if user.is_admin else "main.index"
                 return redirect(_safe_next(request.args.get("next")) or url_for(default))
         else:
-            flash("Sai tên đăng nhập hoặc mật khẩu.", "danger")
+            flash("Tên đăng nhập hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại.", "danger")
     return render_template("login.html")
 
 
@@ -40,15 +40,15 @@ def register():
         full_name, password = f.get("full_name", "").strip(), f.get("password", "")
         error = None
         if not (username and email and full_name):
-            error = "Vui lòng điền đủ thông tin bắt buộc."
+            error = "Vui lòng điền đầy đủ các trường thông tin bắt buộc."
         elif len(password) < 6:
-            error = "Mật khẩu tối thiểu 6 ký tự."
+            error = "Mật khẩu phải có độ dài tối thiểu từ 6 ký tự trở lên."
         elif len(password) > 128:
-            error = "Mật khẩu tối đa 128 ký tự."
+            error = "Mật khẩu không được vượt quá 128 ký tự."
         elif password != f.get("confirm", ""):
-            error = "Mật khẩu nhập lại không khớp."
+            error = "Mật khẩu xác nhận không khớp với mật khẩu đã nhập."
         elif User.query.filter((User.username == username) | (User.email == email)).first():
-            error = "Tên đăng nhập hoặc email đã tồn tại."
+            error = "Tên đăng nhập hoặc địa chỉ email này đã tồn tại trên hệ thống."
         if error:
             flash(error, "danger")
         else:
@@ -57,7 +57,7 @@ def register():
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
-            flash("Đăng ký thành công, hãy đăng nhập.", "success")
+            flash("Đăng ký tài khoản thành công! Bạn có thể đăng nhập ngay bây giờ.", "success")
             return redirect(url_for("auth.login"))
     return render_template("register.html")
 
@@ -73,24 +73,24 @@ def change_password():
 
         error = None
         if not (old_password and new_password and confirm):
-            error = "Vui lòng điền đầy đủ các thông tin."
+            error = "Vui lòng nhập đầy đủ các trường thông tin mật khẩu."
         elif not current_user.check_password(old_password):
-            error = "Mật khẩu hiện tại không đúng."
+            error = "Mật khẩu hiện tại không đúng. Vui lòng kiểm tra lại."
         elif len(new_password) < 6:
-            error = "Mật khẩu mới tối thiểu 6 ký tự."
+            error = "Mật khẩu mới phải có độ dài tối thiểu từ 6 ký tự trở lên."
         elif len(new_password) > 128:
-            error = "Mật khẩu mới tối đa 128 ký tự."
+            error = "Mật khẩu mới không được vượt quá 128 ký tự."
         elif new_password != confirm:
-            error = "Mật khẩu xác nhận không khớp."
+            error = "Mật khẩu xác nhận không khớp với mật khẩu mới."
         elif old_password == new_password:
-            error = "Mật khẩu mới không được trùng mật khẩu cũ."
+            error = "Mật khẩu mới không được trùng với mật khẩu hiện tại."
 
         if error:
             flash(error, "danger")
         else:
             current_user.set_password(new_password)
             db.session.commit()
-            flash("Đổi mật khẩu thành công.", "success")
+            flash("Đổi mật khẩu thành công. Thông tin đăng nhập đã được cập nhật.", "success")
             default = "admin.dashboard" if current_user.is_admin else "main.index"
             return redirect(url_for(default))
 
@@ -101,5 +101,5 @@ def change_password():
 @login_required
 def logout():
     logout_user()
-    flash("Đã đăng xuất.", "info")
+    flash("Bạn đã đăng xuất khỏi hệ thống thư viện thành công.", "info")
     return redirect(url_for("main.index"))

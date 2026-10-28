@@ -37,7 +37,7 @@
     <nav class="nav-links" id="nav-links">
       <a class="nav-link {{ 'active' if request.endpoint in ('main.index','main.book_detail') }}" href="{{ url_for('main.index') }}">{{ icon('search') }} Tra cứu sách</a>
       {% if current_user.is_authenticated and not current_user.is_admin %}
-      <a class="nav-link {{ 'active' if request.endpoint == 'main.my_loans' }}" href="{{ url_for('main.my_loans') }}">{{ icon('loans') }} Sách của tôi</a>
+      <a class="nav-link {{ 'active' if request.endpoint == 'main.my_loans' }}" href="{{ url_for('main.my_loans') }}">{{ icon('book') }} Sách của tôi</a>
       {% endif %}
       {% if current_user.is_authenticated and current_user.is_admin %}
       <a class="nav-link {{ 'active' if request.blueprint == 'admin' }}" href="{{ url_for('admin.dashboard') }}">{{ icon('chart') }} Quản trị</a>

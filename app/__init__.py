@@ -52,12 +52,12 @@ def create_app(config_object=Config):
     def forbidden(e):
         if request.path.startswith("/api/"):
             return jsonify(error="forbidden"), 403
-        return render_template("error.html", code=403, msg="Bạn không có quyền truy cập trang này."), 403
+        return render_template("error.html", code=403, msg="Bạn không có quyền truy cập vào tài nguyên hoặc khu vực này."), 403
 
     @app.errorhandler(404)
     def not_found(e):
         if request.path.startswith("/api/"):
             return jsonify(error="not found"), 404
-        return render_template("error.html", code=404, msg="Không tìm thấy trang yêu cầu."), 404
+        return render_template("error.html", code=404, msg="Trang hoặc tài liệu bạn đang tìm kiếm không tồn tại hoặc đã được di chuyển."), 404
 
     return app

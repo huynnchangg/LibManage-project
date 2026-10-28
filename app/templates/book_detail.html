@@ -39,6 +39,22 @@
       <h1 class="detail-title">{{ book.title }}</h1>
       <div class="detail-author">Tác giả: <span>{{ book.author }}</span></div>
 
+      {# Khối bài viết giới thiệu tác phẩm - Đưa lên trong detail-header-grid #}
+      {% if book.description %}
+      <div class="detail-description-block">
+        <div class="detail-desc-divider">
+          <span class="divider-label">Tóm tắt &amp; Giới thiệu tác phẩm</span>
+        </div>
+        <div class="editorial-article">
+          <div class="editorial-body">
+            {% for para in book.description.split('\n') if para.strip() %}
+              <p>{{ para.strip() }}</p>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
       {# Bảng thông số ấn bản #}
       <div class="meta-spec-grid" data-stagger>
         <div class="meta-spec-item" data-reveal>
@@ -99,22 +115,6 @@
       </div>
     </div>
   </div>
-
-  {# Khối bài viết giới thiệu tác phẩm - Editorial Typography #}
-  {% if book.description %}
-  <section class="editorial-section">
-    <div class="editorial-divider">
-      <span class="divider-label">Tóm tắt &amp; Giới thiệu tác phẩm</span>
-    </div>
-    <div class="editorial-article">
-      <div class="editorial-body">
-        {% for para in book.description.split('\n') if para.strip() %}
-          <p>{{ para.strip() }}</p>
-        {% endfor %}
-      </div>
-    </div>
-  </section>
-  {% endif %}
 </article>
 
 {% if book.category_id %}

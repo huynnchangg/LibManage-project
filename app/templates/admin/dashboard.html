@@ -12,7 +12,7 @@
     ('Đầu sách', s.total_titles, 'primary', 'book', url_for('admin.books')),
     ('Độc giả', s.readers, 'success', 'users', url_for('admin.users')),
     ('Chờ duyệt', s.pending, 'warning', 'clock', url_for('admin.loans', status='pending')),
-    ('Đang mượn', s.borrowing, 'primary', 'loans', url_for('admin.loans', status='borrowing')),
+    ('Đang mượn', s.borrowing, 'primary', 'clock', url_for('admin.loans', status='borrowing')),
     ('Quá hạn', s.overdue, 'danger', 'alert', url_for('admin.loans', status='overdue')),
   ] %}
   <a class="card stat-card" href="{{ link }}" data-reveal>
@@ -23,7 +23,7 @@
 </div>
 
 <a class="alert alert-warning" href="{{ url_for('admin.fines') }}" data-reveal style="color:var(--warn)">
-  {{ icon('coins') }}<div>Tiền phạt chưa thu: <b>{{ s.unpaid|vnd }}</b> — bấm để xem chi tiết và thu tiền.</div>
+  {{ icon('coins') }}<div>Hiện có <b>{{ s.unpaid|vnd }}</b> tiền phạt chưa thu từ độc giả — Nhấn vào đây để xem chi tiết và xử lý thu phí.</div>
 </a>
 
 <div class="panels" data-stagger>

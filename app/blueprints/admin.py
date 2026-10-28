@@ -64,7 +64,7 @@ def _book_form(book):
     if request.method == "POST":
         try:
             book_service.save_book(book, request.form)
-            flash("Đã lưu sách.", "success")
+            flash("Đã lưu thông tin ấn bản vào kho sách thành công.", "success")
             return redirect(url_for("admin.books"))
         except LoanError as e:
             flash(str(e), "danger")
@@ -75,7 +75,7 @@ def _book_form(book):
 @bp.route("/books/<int:book_id>/delete", methods=["POST"])
 @admin_required
 def book_delete(book_id):
-    return _try(book_service.delete_book, "Đã xoá sách.", url_for("admin.books"),
+    return _try(book_service.delete_book, "Đã xoá ấn bản thành công khỏi kho tài liệu.", url_for("admin.books"),
                 Book.query.get_or_404(book_id))
 
 
@@ -86,13 +86,13 @@ def categories():
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         if not name:
-            flash("Tên thể loại không được trống.", "danger")
+            flash("Vui lòng nhập tên thể loại sách (không được để trống).", "danger")
         elif Category.query.filter_by(name=name).first():
-            flash("Thể loại đã tồn tại.", "danger")
+            flash("Thể loại sách này đã tồn tại trên hệ thống.", "danger")
         else:
             db.session.add(Category(name=name))
             db.session.commit()
-            flash("Đã thêm thể loại.", "success")
+            flash("Đã thêm thể loại sách mới thành công.", "success")
         return redirect(url_for("admin.categories"))
     return render_template("admin/categories.html",
                            categories=Category.query.order_by(Category.name).all())
@@ -101,7 +101,7 @@ def categories():
 @bp.route("/categories/<int:cat_id>/delete", methods=["POST"])
 @admin_required
 def category_delete(cat_id):
-    return _try(book_service.delete_category, "Đã xoá thể loại.", url_for("admin.categories"),
+    return _try(book_service.delete_category, "Đã xoá thể loại sách thành công.", url_for("admin.categories"),
                 Category.query.get_or_404(cat_id))
 
 
@@ -137,7 +137,7 @@ def user_toggle(user_id):
         abort(403)
     user.active = not user.active
     db.session.commit()
-    flash(("Đã mở khoá" if user.active else "Đã khoá") + f" tài khoản {user.username}.", "info")
+    flash(("Đã mở khoá" if user.active else "Đã khoá") + f" tài khoản độc giả @{user.username} thành công.", "info")
     return redirect(url_for("admin.users"))
 
 
@@ -168,14 +168,14 @@ def _loan(loan_id):
 @bp.route("/loans/<int:loan_id>/approve", methods=["POST"])
 @admin_required
 def loan_approve(loan_id):
-    return _try(loan_service.approve, "Đã duyệt yêu cầu, bắt đầu tính hạn trả.",
+    return _try(loan_service.approve, "Đã duyệt yêu cầu mượn sách thành công. Thời hạn mượn bắt đầu được tính.",
                 url_for("admin.loans", status="pending"), _loan(loan_id), current_user)
 
 
 @bp.route("/loans/<int:loan_id>/reject", methods=["POST"])
 @admin_required
 def loan_reject(loan_id):
-    return _try(loan_service.reject, "Đã từ chối yêu cầu.",
+    return _try(loan_service.reject, "Đã từ chối yêu cầu mượn sách của độc giả.",
                 url_for("admin.loans", status="pending"), _loan(loan_id), current_user,
                 request.form.get("reason", ""))
 
@@ -184,7 +184,7 @@ def loan_reject(loan_id):
 @admin_required
 def loan_return(loan_id):
     def msg(fine):
-        return "Đã nhận trả sách." if not fine else f"Đã nhận trả sách. Phạt quá hạn: {fine:,} đ."
+        return "Đã nhận trả sách vào kho thành công." if not fine else f"Đã nhận trả sách vào kho thành công. Khoản phạt quá hạn phát sinh: {fine:,} đ."
     return _try(loan_service.return_book, msg, url_for("admin.loans", status="borrowing"),
                 _loan(loan_id), current_user)
 
@@ -200,5 +200,5 @@ def fines():
 @bp.route("/fines/<int:loan_id>/pay", methods=["POST"])
 @admin_required
 def fine_pay(loan_id):
-    return _try(loan_service.pay_fine, "Đã ghi nhận thu tiền phạt.", url_for("admin.fines"),
+    return _try(loan_service.pay_fine, "Đã xác nhận thu tiền phạt thành công từ độc giả.", url_for("admin.fines"),
                 _loan(loan_id))

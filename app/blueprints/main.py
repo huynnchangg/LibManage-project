@@ -36,7 +36,7 @@ def borrow(book_id):
     book = Book.query.get_or_404(book_id)
     try:
         loan_service.request_loan(current_user, book)
-        flash("Đã gửi yêu cầu mượn. Vui lòng chờ thủ thư duyệt.", "success")
+        flash("Đã gửi yêu cầu mượn sách thành công. Vui lòng chờ thủ thư xét duyệt.", "success")
     except LoanError as e:
         flash(str(e), "danger")
     return redirect(url_for("main.my_loans"))
@@ -62,7 +62,7 @@ def _own_loan(loan_id):
 def cancel(loan_id):
     try:
         loan_service.cancel_request(_own_loan(loan_id), current_user)
-        flash("Đã huỷ yêu cầu mượn.", "info")
+        flash("Yêu cầu mượn sách đã được huỷ thành công.", "info")
     except LoanError as e:
         flash(str(e), "danger")
     return redirect(url_for("main.my_loans"))
@@ -73,7 +73,7 @@ def cancel(loan_id):
 def renew(loan_id):
     try:
         loan_service.renew(_own_loan(loan_id), current_user)
-        flash("Gia hạn thành công.", "success")
+        flash("Gia hạn thời gian mượn sách thành công!", "success")
     except LoanError as e:
         flash(str(e), "danger")
     return redirect(url_for("main.my_loans"))

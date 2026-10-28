@@ -12,7 +12,7 @@
   </div>
   <div class="row-actions">
     <form method="post" action="{{ url_for('admin.user_toggle', user_id=user.id) }}"
-      {% if user.active %}data-confirm="Khoá tài khoản {{ user.username }}? Người này sẽ không đăng nhập được."{% endif %}>
+      {% if user.active %}data-confirm="Xác nhận khóa tài khoản độc giả @{{ user.username }}? Độc giả này sẽ tạm thời không thể đăng nhập hoặc gửi yêu cầu mượn sách."{% endif %}>
       {{ csrf() }}
       <button class="btn {{ 'btn-danger' if user.active else 'btn-success' }}">
         {{ icon('shield') }} {{ 'Khoá tài khoản' if user.active else 'Mở khoá' }}
@@ -118,7 +118,7 @@
   </table>
 </div>
 {% else %}
-<div class="card">{{ empty('📚', 'Chưa có lịch sử mượn', 'Độc giả này chưa gửi yêu cầu mượn sách nào.') }}</div>
+<div class="card">{{ empty('📚', 'Chưa có lịch sử mượn', 'Độc giả này chưa phát sinh lượt mượn sách nào trong hệ thống.') }}</div>
 {% endif %}
 
 {% endblock %}

@@ -56,7 +56,7 @@
           </td>
           <td class="col-actions text-right">
             <div class="row-actions">
-              <form method="post" action="{{ url_for('admin.category_delete', cat_id=c.id) }}" data-confirm="Xoá thể loại “{{ c.name }}”? Thao tác này chỉ thực hiện được khi thể loại không còn sách.">
+              <form method="post" action="{{ url_for('admin.category_delete', cat_id=c.id) }}" data-confirm="Xác nhận xoá thể loại “{{ c.name }}”? Thao tác này chỉ thực hiện được khi không còn đầu sách nào thuộc thể loại này.">
                 {{ csrf() }}
                 <button class="btn btn-danger btn-sm btn-action-cat" title="Xóa thể loại">{{ icon('trash') }} Xóa</button>
               </form>
@@ -68,7 +68,7 @@
       </table>
     </div>
     {% else %}
-    <div class="card empty-card">{{ empty('📂', 'Chưa có thể loại nào', 'Điền vào form bên cạnh để tạo thể loại đầu tiên.') }}</div>
+    <div class="card empty-card">{{ empty('📂', 'Chưa có thể loại nào', 'Nhập tên vào biểu mẫu bên cạnh để tạo thể loại đầu tiên cho kho sách.') }}</div>
     {% endif %}
   </div>
 </div>

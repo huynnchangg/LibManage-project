@@ -22,18 +22,18 @@ def save_book(book, form):
     title = form.get("title", "").strip()
     author = form.get("author", "").strip()
     if not title or not author:
-        raise LoanError("Tên sách và tác giả là bắt buộc.")
+        raise LoanError("Vui lòng nhập đầy đủ tên sách và tác giả.")
     try:
         total = int(form.get("total_copies", 1))
         year = int(form["year"]) if form.get("year") else None
     except ValueError:
-        raise LoanError("Số lượng và năm xuất bản phải là số.")
+        raise LoanError("Số lượng bản in và năm xuất bản phải là chữ số hợp lệ.")
     if total < 0:
-        raise LoanError("Số lượng không hợp lệ.")
+        raise LoanError("Tổng số lượng bản in không hợp lệ (phải lớn hơn hoặc bằng 0).")
     if book.id:  # sửa: giữ nhất quán số bản sẵn có
         borrowed = book.total_copies - book.available_copies
         if total < borrowed:
-            raise LoanError(f"Đang có {borrowed} bản được mượn, tổng số không thể nhỏ hơn.")
+            raise LoanError(f"Hiện đang có {borrowed} bản đang được mượn. Tổng số bản in trong kho không thể nhỏ hơn con số này.")
         book.available_copies = total - borrowed
     else:
         book.available_copies = total
@@ -50,14 +50,14 @@ def save_book(book, form):
 
 def delete_book(book):
     if book.loans:
-        raise LoanError("Sách đã có lịch sử mượn, không thể xoá (hãy đặt số lượng = 0).")
+        raise LoanError("Ấn bản này đã có lịch sử mượn trả, không thể xoá hoàn toàn khỏi hệ thống (bạn có thể điều chỉnh số lượng khả dụng về 0).")
     db.session.delete(book)
     db.session.commit()
 
 
 def delete_category(cat):
     if cat.books:
-        raise LoanError("Thể loại còn sách, không thể xoá.")
+        raise LoanError("Không thể xoá thể loại này vì vẫn còn đầu sách đang thuộc về nó.")
     db.session.delete(cat)
     db.session.commit()
 

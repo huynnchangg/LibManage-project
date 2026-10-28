@@ -391,25 +391,33 @@ main {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 14px;
+  padding: 7px 16px;
   border-radius: var(--radius-pill);
-  color: var(--color-cloud-dark);
+  background-color: var(--color-ivory-light);
+  border: 1.5px solid var(--color-stone);
+  color: var(--color-slate-dark);
   font-family: var(--font-anthropic-sans);
-  font-weight: 500;
+  font-weight: 600;
   font-size: 0.875rem;
   transition: all 0.2s ease;
 }
 
+.nav-link .icon {
+  color: var(--color-clay);
+  flex-shrink: 0;
+}
+
 .nav-link:hover {
   color: var(--color-slate-dark);
-  background: var(--color-ivory-light);
+  background-color: var(--color-oat-warm);
+  border-color: var(--color-cloud-dark);
 }
 
 .nav-link.active {
   color: var(--color-slate-dark);
-  background: var(--color-ivory-light);
-  font-weight: 600;
-  border: 1px solid var(--color-stone);
+  background-color: #ffffff;
+  font-weight: 700;
+  border: 1.5px solid var(--color-cloud-dark);
 }
 
 .nav-spacer { flex: 1; }
@@ -424,23 +432,73 @@ main {
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  border: 1px solid var(--color-stone);
+  border: 1.5px solid var(--color-cloud-dark);
   background: var(--color-ivory-light);
   color: var(--color-slate-dark);
   cursor: pointer;
   display: grid;
   place-items: center;
-  transition: border-color 0.2s, background 0.2s;
+  transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.1s ease;
 }
 
 .icon-btn:hover {
-  border-color: var(--color-cloud-dark);
+  border-color: var(--color-slate-dark);
   background: var(--color-oat-warm);
 }
 
+.icon-btn:active {
+  transform: scale(0.96);
+}
+
 .theme-toggle .moon { display: none; }
+.theme-toggle .sun { color: var(--color-slate-dark); }
+
+/* Dark Mode Overrides for Navbar Elements (High Contrast & Clear Boundaries) */
+[data-theme="dark"] .nav-link {
+  background-color: #1f1e1b !important;
+  border: 1.5px solid #3d3d37 !important;
+  color: #f0eee6 !important;
+  font-weight: 600 !important;
+}
+
+[data-theme="dark"] .nav-link .icon {
+  color: var(--color-clay) !important;
+}
+
+[data-theme="dark"] .nav-link:hover {
+  color: #ffffff !important;
+  background-color: #282723 !important;
+  border-color: #5a5952 !important;
+}
+
+[data-theme="dark"] .nav-link.active {
+  color: #ffffff !important;
+  background-color: #282723 !important;
+  border: 1.5px solid #737168 !important;
+  font-weight: 700 !important;
+}
+
+[data-theme="dark"] .nav-link.active .icon {
+  color: var(--color-clay) !important;
+}
+
+[data-theme="dark"] .icon-btn {
+  background: #252420 !important;
+  border: 1.5px solid #4a4943 !important;
+  color: #f0eee6 !important;
+}
+
+[data-theme="dark"] .icon-btn:hover {
+  background: #33322d !important;
+  border-color: #737168 !important;
+  color: #ffffff !important;
+}
+
 [data-theme="dark"] .theme-toggle .sun { display: none; }
-[data-theme="dark"] .theme-toggle .moon { display: block; }
+[data-theme="dark"] .theme-toggle .moon {
+  display: block;
+  color: #f5e3c7 !important; /* Golden/Amber warm moon */
+}
 
 .user-chip {
   display: flex;
@@ -448,7 +506,7 @@ main {
   gap: 10px;
   padding: 4px 14px 4px 5px;
   border-radius: var(--radius-pill);
-  border: 1px solid var(--color-stone);
+  border: 1.5px solid var(--color-cloud-dark);
   background: var(--color-ivory-light);
   font-weight: 600;
   font-size: 0.85rem;
@@ -466,6 +524,18 @@ main {
   font-size: 0.8rem;
   font-weight: 700;
   border: 1px solid var(--color-stone);
+}
+
+[data-theme="dark"] .user-chip {
+  background: #252420 !important;
+  border: 1.5px solid #4a4943 !important;
+  color: #f0eee6 !important;
+}
+
+[data-theme="dark"] .user-chip .avatar {
+  background: #33322d !important;
+  border-color: #525048 !important;
+  color: #ffffff !important;
 }
 
 .menu-btn { display: none; }
@@ -1051,7 +1121,7 @@ main {
   font-family: var(--font-anthropic-serif);
   font-size: 0.95rem;
   line-height: 1.5;
-  color: #5c5b57;
+  color: var(--color-cloud-dark);
   margin-bottom: 24px;
 }
 
@@ -1674,17 +1744,20 @@ main {
 }
 
 /* THE EDITORIAL DESCRIPTION SECTION */
+.detail-description-block,
 .editorial-section {
-  margin-top: 56px;
-  padding-top: 40px;
+  margin-top: 28px;
+  padding-top: 24px;
   border-top: 1px solid var(--color-stone);
 }
 
-.editorial-divider {
-  margin-bottom: 24px;
+.editorial-divider,
+.detail-desc-divider {
+  margin-bottom: 20px;
 }
 
-.divider-label {
+.divider-label,
+.detail-desc-label {
   font-family: var(--font-anthropic-sans);
   font-size: 0.8rem;
   font-weight: 700;
@@ -1697,16 +1770,19 @@ main {
 }
 
 .editorial-article {
-  max-width: 72ch;
+  max-width: 100%;
 }
 
 .editorial-body p {
   font-family: var(--font-anthropic-serif);
-  font-size: 1.125rem; /* 18px */
+  font-size: 1.05rem; /* ~17px */
   line-height: 1.78;
   color: var(--color-slate-dark);
-  margin-bottom: 1.4rem;
-  text-align: left;
+  margin-bottom: 1.25rem;
+  text-align: justify !important;
+  text-justify: inter-word;
+  hyphens: auto;
+  -webkit-hyphens: auto;
   letter-spacing: 0;
 }
 
@@ -1714,10 +1790,10 @@ main {
 .editorial-body p:first-of-type::first-letter {
   font-family: var(--font-anthropic-serif);
   float: left;
-  font-size: 3.5rem;
+  font-size: 3.2rem;
   line-height: 0.8;
   padding-right: 12px;
-  padding-top: 6px;
+  padding-top: 4px;
   color: var(--color-clay);
   font-weight: 700;
 }
@@ -1779,15 +1855,25 @@ main {
   color: var(--color-cloud-dark);
 }
 
-/* Editorial CTA Banner (Grounding Dark Slate #141413 Accent) */
+/* ==========================================================================
+   EDITORIAL CTA BANNER (Grounding Dark Slate #141413 Accent)
+   ========================================================================== */
 .editorial-cta-banner {
   margin-top: 72px;
   border-radius: var(--radius-cards);
-  background: var(--color-slate-dark);
-  color: var(--color-ivory-light);
+  background-color: #141413 !important;
+  color: #faf9f5 !important;
   padding: clamp(36px, 6vw, 64px);
   text-align: center;
-  border: 1px solid var(--color-slate-medium);
+  border: 1px solid #2a2a27 !important;
+  position: relative;
+  overflow: hidden;
+}
+
+/* In Dark Mode, maintain a rich elevated dark surface (#1f1e1b), NEVER invert to light cream! */
+[data-theme="dark"] .editorial-cta-banner {
+  background-color: #1f1e1b !important;
+  border-color: #383834 !important;
 }
 
 .cta-banner-content {
@@ -1800,7 +1886,7 @@ main {
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.1em;
-  color: var(--color-clay);
+  color: var(--color-clay) !important;
   display: block;
   margin-bottom: 12px;
 }
@@ -1809,17 +1895,25 @@ main {
   font-family: var(--font-anthropic-serif);
   font-size: clamp(1.8rem, 3.5vw, 2.6rem);
   font-weight: 600;
-  color: #faf9f5;
+  color: #faf9f5 !important;
   margin-bottom: 14px;
   line-height: 1.2;
+}
+
+[data-theme="dark"] .cta-heading {
+  color: #f0eee6 !important;
 }
 
 .cta-sub {
   font-family: var(--font-anthropic-serif);
   font-size: 1.05rem;
-  color: var(--color-cloud-medium);
+  color: #b0aea5 !important;
   margin-bottom: 30px;
   line-height: 1.6;
+}
+
+[data-theme="dark"] .cta-sub {
+  color: #9e9d96 !important;
 }
 
 .cta-buttons {
@@ -1829,12 +1923,38 @@ main {
   flex-wrap: wrap;
 }
 
-.editorial-cta-banner .btn-ghost {
-  color: #faf9f5;
-  border-color: var(--color-cloud-dark);
+/* Nút đăng nhập trong banner: Luôn có nền trong suốt, viền và chữ trắng sáng, KHÔNG BAO GIỜ bị trắng xóa */
+.editorial-cta-banner .btn-ghost,
+.editorial-cta-banner .btn-cta-login,
+.btn-cta-login {
+  background-color: transparent !important;
+  color: #faf9f5 !important;
+  border: 1.5px solid rgba(250, 249, 245, 0.45) !important;
+  font-weight: 600 !important;
 }
-.editorial-cta-banner .btn-ghost:hover {
-  background: rgba(255, 255, 255, 0.08);
+
+.editorial-cta-banner .btn-ghost:hover,
+.editorial-cta-banner .btn-cta-login:hover,
+.btn-cta-login:hover {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+  border-color: #ffffff !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .editorial-cta-banner .btn-ghost,
+[data-theme="dark"] .editorial-cta-banner .btn-cta-login,
+[data-theme="dark"] .btn-cta-login {
+  background-color: transparent !important;
+  color: #f0eee6 !important;
+  border: 1.5px solid #4a4944 !important;
+}
+
+[data-theme="dark"] .editorial-cta-banner .btn-ghost:hover,
+[data-theme="dark"] .editorial-cta-banner .btn-cta-login:hover,
+[data-theme="dark"] .btn-cta-login:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border-color: #f0eee6 !important;
+  color: #ffffff !important;
 }
 
 /* ==========================================================================

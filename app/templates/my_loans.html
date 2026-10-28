@@ -7,12 +7,12 @@
 {% set n_late = loans|selectattr('is_overdue')|list|length %}
 
 <div class="page-head" data-reveal>
-  <div><span class="eyebrow">{{ icon('loans') }} Thư viện cá nhân</span><h1 class="mt-1">Sách của tôi</h1></div>
+  <div><span class="eyebrow">{{ icon('book') }} Thư viện cá nhân</span><h1 class="mt-1">Sách của tôi</h1></div>
   <a class="btn btn-primary" href="{{ url_for('main.index') }}">{{ icon('plus') }} Mượn thêm sách</a>
 </div>
 
 {% if unpaid %}
-<div class="alert alert-danger" data-reveal>{{ icon('alert') }}<div>Bạn còn <b>{{ unpaid|vnd }}</b> tiền phạt chưa nộp. Vui lòng thanh toán tại quầy thủ thư để tiếp tục mượn sách.</div></div>
+<div class="alert alert-danger" data-reveal>{{ icon('alert') }}<div>Bạn đang có <b>{{ unpaid|vnd }}</b> tiền phạt chưa thanh toán. Vui lòng nộp phạt tại quầy thủ thư để tiếp tục mượn sách.</div></div>
 {% endif %}
 
 <div class="summary" data-stagger>
@@ -56,10 +56,10 @@
     </div>
     <div class="loan-actions">
       {% if l.status == 'pending' %}
-        <form method="post" action="{{ url_for('main.cancel', loan_id=l.id) }}" data-confirm="Bạn muốn huỷ yêu cầu mượn “{{ l.book.title }}”?">{{ csrf() }}<button class="btn btn-ghost btn-sm">{{ icon('x') }} Huỷ yêu cầu</button></form>
+        <form method="post" action="{{ url_for('main.cancel', loan_id=l.id) }}" data-confirm="Bạn có chắc chắn muốn huỷ yêu cầu mượn cuốn “{{ l.book.title }}”?">{{ csrf() }}<button class="btn btn-ghost btn-sm">{{ icon('x') }} Huỷ yêu cầu</button></form>
       {% elif l.status == 'borrowing' and not l.is_overdue %}
         {% if l.renew_count < config.MAX_RENEWALS %}
-          <form method="post" action="{{ url_for('main.renew', loan_id=l.id) }}" data-confirm="Xác nhận gia hạn thêm {{ config.RENEW_DAYS }} ngày cho cuốn “{{ l.book.title }}”?">{{ csrf() }}<button class="btn btn-primary btn-sm">{{ icon('refresh') }} Gia hạn (+{{ config.RENEW_DAYS }} ngày)</button></form>
+          <form method="post" action="{{ url_for('main.renew', loan_id=l.id) }}" data-confirm="Xác nhận gia hạn thêm {{ config.RENEW_DAYS }} ngày cho cuốn sách “{{ l.book.title }}”?">{{ csrf() }}<button class="btn btn-primary btn-sm">{{ icon('refresh') }} Gia hạn (+{{ config.RENEW_DAYS }} ngày)</button></form>
         {% else %}
           <span class="badge badge-secondary" title="Bạn đã dùng hết số lần gia hạn cho cuốn sách này">{{ icon('check') }} Đã gia hạn ({{ l.renew_count }}/{{ config.MAX_RENEWALS }})</span>
         {% endif %}
@@ -69,6 +69,6 @@
   {% endfor %}
 </div>
 {% else %}
-<div class="card">{{ empty('📚', 'Bạn chưa mượn cuốn sách nào', 'Hãy tra cứu và gửi yêu cầu mượn cuốn sách đầu tiên.') }}<div class="center" style="padding-bottom:36px"><a class="btn btn-primary" href="{{ url_for('main.index') }}">Tra cứu sách</a></div></div>
+<div class="card">{{ empty('📚', 'Chưa có yêu cầu hoặc lượt mượn nào', 'Khám phá kho sách thư viện và gửi yêu cầu mượn ấn bản bạn quan tâm.') }}<div class="center" style="padding-bottom:36px"><a class="btn btn-primary" href="{{ url_for('main.index') }}">Tra cứu sách</a></div></div>
 {% endif %}
 {% endblock %}

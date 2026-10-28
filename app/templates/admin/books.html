@@ -76,7 +76,7 @@
       <td class="text-right">
         <div class="row-actions">
           <a class="btn btn-ghost btn-sm btn-action-book" href="{{ url_for('admin.book_edit', book_id=b.id) }}" title="Chỉnh sửa thông tin">{{ icon('edit') }} Sửa</a>
-          <form method="post" action="{{ url_for('admin.book_delete', book_id=b.id) }}" data-confirm="Xác nhận xoá sách “{{ b.title }}”? Thao tác này sẽ xoá vĩnh viễn sách khỏi hệ thống.">
+          <form method="post" action="{{ url_for('admin.book_delete', book_id=b.id) }}" data-confirm="Xác nhận xoá ấn bản “{{ b.title }}”? Thao tác này sẽ xoá vĩnh viễn đầu sách khỏi hệ thống thư viện.">
             {{ csrf() }}
             <button class="btn btn-danger btn-sm btn-action-book" title="Xóa sách">{{ icon('trash') }} Xóa</button>
           </form>
@@ -89,6 +89,6 @@
 </div>
 {{ pager(pagination, 'admin.books', {'q': request.args.get('q') or None}) }}
 {% else %}
-<div class="card empty-card">{{ empty('📚', 'Chưa có ấn bản phù hợp', 'Bấm “Thêm sách mới” hoặc tìm kiếm với từ khóa khác.') }}</div>
+<div class="card empty-card">{{ empty('📚', 'Không tìm thấy ấn bản phù hợp', 'Nhấn nút “Thêm sách mới” ở trên hoặc thử lại với từ khóa tra cứu khác.') }}</div>
 {% endif %}
 {% endblock %}

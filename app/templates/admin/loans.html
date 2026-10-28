@@ -4,7 +4,7 @@
 {% block admin_content %}
 <div class="page-head" data-reveal>
   <div>
-    <span class="eyebrow">{{ icon('loans') }} Quản trị mượn trả</span>
+    <span class="eyebrow">{{ icon('book') }} Quản trị mượn trả</span>
     <h1 class="mt-1">Quản lý mượn trả sách</h1>
   </div>
 </div>
@@ -64,9 +64,9 @@
               {{ icon('x') }} Từ chối
             </button>
           {% elif l.status == 'borrowing' %}
-            <form method="post" action="{{ url_for('admin.loan_return', loan_id=l.id) }}" data-confirm="Xác nhận đã nhận lại cuốn “{{ l.book.title }}”{{ ' (sẽ tính phạt ' ~ (l.current_fine|vnd) ~ ')' if l.is_overdue }}?">
+            <form method="post" action="{{ url_for('admin.loan_return', loan_id=l.id) }}" data-confirm="Xác nhận nhận lại cuốn “{{ l.book.title }}” vào kho thư viện{{ ' (sẽ ghi nhận khoản phạt quá hạn ' ~ (l.current_fine|vnd) ~ ')' if l.is_overdue }}?">
               {{ csrf() }}
-              <button class="btn btn-primary btn-sm btn-action-loan" title="Xác nhận nhận lại sách">{{ icon('loans') }} Nhận trả</button>
+              <button class="btn btn-primary btn-sm btn-action-loan" title="Xác nhận nhận lại sách">{{ icon('check') }} Nhận trả</button>
             </form>
           {% elif l.status == 'returned' %}
             <span class="badge badge-success badge-plain">Đã trả</span>
@@ -105,6 +105,6 @@
 </div>
 
 {% else %}
-<div class="card">{{ empty('✅', 'Không có dữ liệu', 'Chưa có lượt mượn nào ở mục này.') }}</div>
+<div class="card">{{ empty('📋', 'Danh sách trống', 'Hiện không có yêu cầu hoặc lượt mượn sách nào ở trạng thái này.') }}</div>
 {% endif %}
 {% endblock %}
