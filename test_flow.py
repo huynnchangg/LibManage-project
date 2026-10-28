@@ -101,6 +101,28 @@ with app.app_context():
     assert l1.copy.status == COPY_RESERVED
     assert l1.book.available_copies == 1
 
+# Kiểm tra B02: duyệt lại phiếu đã được duyệt
+with app.app_context():
+    l1 = db.session.get(Loan, 1)
+    stock_before = l1.book.available_copies
+    status_before = l1.status
+    copy_status_before = l1.copy.status
+
+# Gửi yêu cầu duyệt lần thứ hai
+response = cl.post(
+    "/admin/loans/1/approve",
+    follow_redirects=True
+)
+
+# Kiểm tra trạng thái phiếu và tồn kho không thay đổi
+with app.app_context():
+    l1 = db.session.get(Loan, 1)
+    assert l1.status == status_before, "Phiếu đã duyệt bị đổi trạng thái!"
+    assert l1.copy.status == copy_status_before, "Trạng thái bản sách bị thay đổi!"
+    assert l1.book.available_copies == stock_before, "Tồn kho bị trừ thêm lần nữa!"
+
+print("B02: Đã kiểm tra duyệt lại phiếu, tồn kho không thay đổi.")
+
 # Bàn giao sách tại quầy khi độc giả tới lấy: chuyển sang BORROWING
 ok(cl.post("/admin/loans/1/handover", follow_redirects=True), "giao sách")
 with app.app_context():
@@ -129,12 +151,41 @@ cl.post("/logout")
 ok(login("r1", "newpass123"))
 ok(cl.post("/books/2/borrow", follow_redirects=True), "tiền phạt chưa thanh toán")
 
+
 # Thủ thư thu tiền phạt tại quầy
 cl.post("/logout")
 ok(login("admin", "admin123"))
 ok(cl.post("/admin/fines/1/pay", follow_redirects=True), "thu tiền phạt")
+
 with app.app_context():
-    assert db.session.get(Loan, 1).fine_paid is True
+    l1 = db.session.get(Loan, 1)
+    assert l1.fine_paid is True
+
+    # Kiểm tra lịch sử giao dịch thu tiền phạt
+    from app.models import FinePayment
+
+    payment = FinePayment.query.filter_by(loan_id=l1.id).first()
+
+    assert payment is not None, "Chưa lưu lịch sử thu tiền phạt!"
+    assert payment.amount == l1.fine_amount, "Số tiền thu không chính xác!"
+    assert payment.paid_at is not None, "Thiếu thời điểm thu tiền!"
+    assert payment.collector_id is not None, "Thiếu thông tin người thu tiền!"
+
+    payment_count_before = FinePayment.query.filter_by(
+        loan_id=l1.id
+    ).count()
+
+# Thử thu tiền lần thứ hai: không được tạo giao dịch trùng
+cl.post("/admin/fines/1/pay", follow_redirects=True)
+
+with app.app_context():
+    payment_count_after = FinePayment.query.filter_by(loan_id=1).count()
+    assert payment_count_after == payment_count_before, (
+        "Lỗi: thu tiền lần hai tạo giao dịch trùng!"
+    )
+
+print("B06: Đã kiểm tra thu tiền, lịch sử giao dịch và chống thu trùng.")
+
 
 print("--- 7. Kiểm tra cho mượn trực tiếp tại quầy (Walk-in Checkout) ---")
 ok(cl.post("/admin/loans/checkout", data={"student_query": "11210001", "barcodes": "BC000201", "note": "Mượn trực tiếp tại quầy"}, follow_redirects=True), "lập phiếu mượn")

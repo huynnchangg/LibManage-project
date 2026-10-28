@@ -9,7 +9,7 @@ from ..models import (
     COPY_AVAILABLE, COPY_BORROWED, COPY_DAMAGED, COPY_LOST, COPY_RESERVED,
     LOAN_BORROWING, LOAN_CANCELLED, LOAN_DAMAGED, LOAN_LOST, LOAN_PENDING,
     LOAN_READY, LOAN_REJECTED, LOAN_RETURNED, SLIP_TYPE_DIRECT, SLIP_TYPE_ONLINE,
-    Book, BookCopy, CartItem, Loan, LoanSlip, User,
+    Book, BookCopy, CartItem, FinePayment, Loan, LoanSlip, User,
 )
 
 
@@ -210,7 +210,13 @@ def approve(loan, admin, barcode=None):
     """
     if loan.status != LOAN_PENDING:
         raise LoanError("Yêu cầu mượn này không còn ở trạng thái chờ duyệt.")
-
+    reader = loan.user  
+    if not reader.active:
+        raise LoanError("Tài khoản độc giả đang bị khoá, không thể duyệt.")
+    if unpaid_fines(reader) > 0:
+        raise LoanError("Độc giả còn tiền phạt chưa nộp, không thể duyệt.")
+    if any(l.is_overdue for l in active_loans(reader)):
+        raise LoanError("Độc giả đang có sách quá hạn, không thể duyệt.")
     book = loan.book
     copy = None
     if barcode:
@@ -402,6 +408,16 @@ def return_book(loan, admin, condition="normal", damage_percent=0, pay_now=False
     loan.damage_percent = dmg_pct
     loan.fine_amount = total_fine
     loan.fine_paid = (total_fine == 0) or bool(pay_now)
+
+    if total_fine > 0 and pay_now:
+        db.session.add(
+            FinePayment(
+                loan_id=loan.id,
+                amount=total_fine,
+                paid_at=now,
+                collector_id=admin.id,
+            )
+        )    
     loan.returned_at = now
     loan.processed_by = admin.id
     if note:
@@ -441,9 +457,32 @@ def renew(loan, user):
     db.session.commit()
 
 
-def pay_fine(loan):
-    """Xác nhận thu tiền phạt từ độc giả."""
-    if not loan.fine_amount or loan.fine_paid:
-        raise LoanError("Lượt mượn này không có khoản tiền phạt nào cần ghi nhận thu.")
+def pay_fine(loan, admin):
+    """Ghi nhận thu tiền phạt và lưu lịch sử giao dịch."""
+
+    if not admin.is_admin:
+        raise LoanError("Bạn không có quyền thu tiền phạt.")
+
+    if not loan.fine_amount or loan.fine_amount <= 0:
+        raise LoanError("Lượt mượn này không có khoản tiền phạt cần thu.")
+
+    if loan.fine_paid:
+        raise LoanError("Khoản tiền phạt này đã được thanh toán trước đó.")
+
+    payment = FinePayment(
+        loan_id=loan.id,
+        amount=loan.fine_amount,
+        paid_at=datetime.now(),
+        collector_id=admin.id,
+    )
+
     loan.fine_paid = True
-    db.session.commit()
+    db.session.add(payment)
+
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
+
+    return payment
