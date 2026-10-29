@@ -7,26 +7,26 @@ Thành viên: **Huyền Trang** (TV1 – UI/Frontend) · **Khánh Linh** (TV2 �
 
 ## 1. Phát biểu nhiệm vụ
 
-Số hoá toàn bộ quy trình mượn – trả sách của thư viện trường đại học theo mô hình thực tế: độc giả tra cứu, thêm sách vào giỏ mượn hoặc mượn nhanh 1-click, thủ thư duyệt và giữ sách tại quầy trong 48 giờ, xác nhận giao sách, cho mượn trực tiếp tại quầy bằng mã vạch (Barcode), kiểm tra tình trạng sách khi hoàn trả (hư hỏng 25%–100%, báo mất) và thu tiền phạt minh bạch.
+Số hoá toàn bộ quy trình mượn – trả sách của thư viện trường đại học theo mô hình thực tế: độc giả tra cứu, thêm sách vào giỏ mượn hoặc mượn nhanh 1-click, thủ thư kiểm tra điều kiện độc giả và duyệt yêu cầu, giữ sách tại quầy trong 48 giờ, xác nhận giao sách, cho mượn trực tiếp tại quầy bằng mã vạch (Barcode), kiểm tra tình trạng sách khi hoàn trả (hư hỏng 25%–100%, báo mất) và thu tiền phạt có kiểm toán (lưu lịch sử giao dịch).
 
 ## 2. Quy trình nghiệp vụ chuẩn
 
 ```
 [ ĐỘC GIẢ ]                                              [ THỦ THƯ TẠI QUẦY ]
-                                                            
+
 (MƯỢN ONLINE)                                            (MƯỢN TRỰC TIẾP TẠI QUẦY)
-Chọn sách vào Giỏ → Gửi yêu cầu                             Sinh viên mang sách tới quầy
+Chọn sách vào Giỏ → Gửi yêu cầu                          Sinh viên mang sách tới quầy
         │                                                           │
         ▼                                                           ▼
 Tạo Phiếu mượn (PENDING)                                 Thủ thư nhập Mã SV + Quét Barcode sách
         │                                                           │
-        ▼ (Thủ thư gom sách trên kệ)                                ▼
+        ▼ (Thủ thư kiểm tra điều kiện*)                             ▼
 Thủ thư DUYỆT → READY_FOR_PICKUP (Chờ lấy sách)         Tạo phiếu & GIAO SÁCH NGAY
         │ (Giữ chỗ sách trong 48 giờ)                               │
         ▼                                                           │
-SV đến quầy đọc Mã phiếu / Mã SV ───────────────────────────────────┤
+SV đến quầy đọc Mã phiếu / Mã SV ──────────────────────────────────┤
         │                                                           │
-Thủ thư kiểm tra mã vạch & BÀN GIAO SÁCH                            │
+Thủ thư kiểm tra mã vạch & BÀN GIAO SÁCH                           │
         │                                                           │
         ▼                                                           ▼
    BORROWING (Đang mượn — Bắt đầu tính hạn 14 ngày & cho phép gia hạn tối đa 1 lần)
@@ -40,9 +40,12 @@ Thủ thư kiểm tra mã vạch & BÀN GIAO SÁCH                            �
                                 │
                                 ▼
                      THANH TOÁN TIỀN PHẠT:
-                     ├── Thu tiền mặt/QR ngay lúc trả sách (Đóng phiếu)
-                     └── Hoặc Ghi nợ (Tài khoản bị khoá mượn mới cho đến khi trả nợ)
+                     ├── Thu tiền mặt/QR ngay lúc trả sách → Ghi nhận FinePayment
+                     └── Hoặc Ghi nợ → Thu sau tại quầy → Ghi nhận FinePayment
+                          (Tài khoản bị khoá mượn mới cho đến khi trả nợ)
 ```
+
+> *Điều kiện thủ thư kiểm tra khi duyệt: tài khoản không bị khoá, không còn tiền phạt chưa nộp, không có sách đang quá hạn.
 
 Quy tắc ràng buộc (xem `app/config.py`):
 
@@ -69,17 +72,41 @@ Biểu phí bồi thường hư hại & mất sách:
 | Presentation | `app/templates/`, `app/static/` | Giao diện Jinja2; Anthropic Paper Design System (Warm Parchment) |
 | Controller | `app/blueprints/` (auth, main, admin, api) | Nhận request, kiểm tra quyền, gọi service |
 | Service | `app/services/` (book_service, loan_service) | Toàn bộ quy tắc nghiệp vụ, tính toán phạt, giao dịch DB |
-| Model | `app/models.py` | Thực thể SQLAlchemy ORM: User, Category, Book, BookCopy, LoanSlip, Loan, CartItem |
+| Model | `app/models.py` | Thực thể SQLAlchemy ORM: User, Category, Book, BookCopy, LoanSlip, Loan, CartItem, FinePayment |
 | Database | `instance/library.db` (SQLite) | CSDL SQLite nạp sẵn dữ liệu phong phú, đồng bộ cả nhóm qua Git |
 
 Bảo mật: băm mật khẩu (werkzeug), RBAC (`admin_required` decorator), CSRF token (Flask-WTF), ORM chống SQL Injection, Jinja2 auto-escape chống XSS, kích hoạt Foreign Keys SQLite (`PRAGMA foreign_keys=ON`), security headers (`nosniff`, `DENY`), chống open-redirect, cookie `HttpOnly`/`SameSite=Lax`.
 
-## 4. Mô hình dữ liệu mở rộng (ERD)
+## 4. Mô hình dữ liệu (ERD)
 
 ```
 User (1) ── (n) CartItem (n) ── (1) Book
 User (1) ── (n) LoanSlip (1) ── (n) Loan (n) ── (1) BookCopy (n) ── (1) Book (n) ── (1) Category
+Loan (1) ── (n) FinePayment (n) ── (1) User   (thủ thư thu tiền)
 LoanSlip.processed_by → User  (thủ thư duyệt/giao)
+```
+
+### Các thực thể chính
+
+| Model | Mô tả |
+|---|---|
+| `User` | Độc giả & thủ thư. Trường `role` phân biệt `reader` / `admin`, `active` khoá/mở tài khoản. |
+| `Book` | Đầu sách với giá bìa, tồn kho tổng (`total_copies`) và tồn kho sẵn sàng (`available_copies`). |
+| `BookCopy` | Bản sách vật lý – có mã vạch riêng, trạng thái: `available / reserved / borrowed / lost / damaged`. |
+| `LoanSlip` | Phiếu mượn – gom một hoặc nhiều cuốn mượn cùng đợt. Có mã phiếu dạng `PM-YYYYMM-XXXX`. |
+| `Loan` | Một mục mượn trong phiếu – liên kết User, Book, BookCopy và toàn bộ thông tin phạt. |
+| `CartItem` | Giỏ mượn tạm thời của độc giả trước khi gửi phiếu. |
+| `FinePayment` | Lịch sử giao dịch thu tiền phạt – lưu số tiền, thời điểm và thủ thư thu tiền. |
+
+### Vòng đời trạng thái Loan
+
+```
+PENDING → READY_FOR_PICKUP → BORROWING → RETURNED
+                                       → DAMAGED
+                                       → LOST
+        → REJECTED
+PENDING → CANCELLED
+READY_FOR_PICKUP → CANCELLED (quá 48h hoặc độc giả huỷ)
 ```
 
 ## 5. Chức năng chính
@@ -95,13 +122,13 @@ LoanSlip.processed_by → User  (thủ thư duyệt/giao)
 **Thủ thư (Admin):**
 * **Dashboard thống kê:** Đồ thị Donut trực quan kho sách, top sách mượn nhiều, độc giả tích cực, cảnh báo nợ phạt.
 * **Cho mượn trực tiếp tại quầy:** Nhập mã SV + quét mã vạch (Barcode) xuất sách ngay trong 5 giây.
-* **Duyệt mượn trực tuyến:** Gán bản sao vật lý cụ thể, giữ chỗ 48h cho độc giả.
+* **Duyệt mượn trực tuyến:** Kiểm tra điều kiện độc giả (tài khoản, nợ phạt, sách quá hạn), gán bản sao vật lý, giữ chỗ 48h.
 * **Bàn giao sách tại quầy:** Xác nhận độc giả đến nhận sách và bắt đầu tính hạn 14 ngày.
-* **Nhận trả sách thông minh:** Tự động tính tiền phạt quá hạn, phạt hư hại 25%–100%, bồi thường mất sách, tùy chọn thu tiền mặt ngay tại quầy.
+* **Nhận trả sách thông minh:** Tự động tính tiền phạt quá hạn, phạt hư hại 25%–100%, bồi thường mất sách, tùy chọn thu tiền mặt ngay tại quầy (ghi nhận FinePayment).
 * **Quản lý sách & Bản sao:** Thêm/sửa sách, đặt giá bìa, quản lý danh sách mã vạch từng cuốn, ẩn/hiện lưu hành.
-* **Quản lý thể loại:** Thêm, xóa và **đổi tên thể loại**.
-* **Quản lý độc giả:** Phân trang, tìm kiếm, tạo tài khoản độc giả mới, đặt lại mật khẩu (reset password), khóa/mở khóa tài khoản.
-* **Quản lý tiền phạt:** Lọc Đã thu / Chưa thu, tìm kiếm, thu tiền phạt.
+* **Quản lý thể loại:** Thêm, xóa và đổi tên thể loại.
+* **Quản lý độc giả:** Phân trang, tìm kiếm, tạo tài khoản độc giả mới, đặt lại mật khẩu, khóa/mở khóa tài khoản.
+* **Quản lý tiền phạt:** Lọc Đã thu / Chưa thu, tìm kiếm, thu tiền phạt và ghi nhận lịch sử giao dịch (chống thu trùng).
 
 **REST API JSON (`/api/v1/`):**
 * `GET /api/v1/books`: Danh sách sách (hỗ trợ phân trang, tìm kiếm, lọc thể loại).
