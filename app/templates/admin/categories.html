@@ -10,23 +10,6 @@
 </div>
 
 <div class="category-admin-grid">
-  {# Form thêm chuyên mục mới #}
-  <div class="card card-pad add-cat-card" data-reveal>
-    <div class="panel-header">
-      <span class="panel-icon">{{ icon('plus') }}</span>
-      <h3>Tạo thể loại mới</h3>
-    </div>
-    <p class="muted small mb-3">Tạo thể loại để phân loại và sắp xếp sách trong kho khoa học hơn.</p>
-    <form method="post" class="cat-form">
-      {{ csrf() }}
-      <div class="field">
-        <label for="cat-name">Tên thể loại *</label>
-        <input id="cat-name" name="name" class="input" placeholder="Ví dụ: Khoa học dữ liệu, Triết học..." required autocomplete="off">
-      </div>
-      <button class="btn btn-primary mt-2">{{ icon('plus') }} Thêm thể loại</button>
-    </form>
-  </div>
-
   {# Bảng danh sách thể loại #}
   <div class="cat-table-wrap" data-reveal>
     {% if categories %}
@@ -77,6 +60,23 @@
     {% else %}
     <div class="card empty-card">{{ empty('📂', 'Chưa có thể loại nào', 'Nhập tên vào biểu mẫu bên cạnh để tạo thể loại đầu tiên cho kho sách.') }}</div>
     {% endif %}
+  </div>
+
+  {# Form thêm chuyên mục mới #}
+  <div class="card card-pad add-cat-card" data-reveal>
+    <div class="panel-header">
+      <span class="panel-icon">{{ icon('plus') }}</span>
+      <h3>Tạo thể loại mới</h3>
+    </div>
+    <p class="muted small mb-3">Tạo thể loại để phân loại và sắp xếp sách trong kho khoa học hơn.</p>
+    <form method="post" class="cat-form">
+      {{ csrf() }}
+      <div class="field">
+        <label for="cat-name">Tên thể loại *</label>
+        <input id="cat-name" name="name" class="input" placeholder="Ví dụ: Khoa học dữ liệu, Triết học..." required autocomplete="off">
+      </div>
+      <button class="btn btn-primary mt-2">{{ icon('plus') }} Thêm thể loại</button>
+    </form>
   </div>
 </div>
 

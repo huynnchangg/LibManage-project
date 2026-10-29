@@ -19,7 +19,7 @@
 <div class="stat-grid" data-stagger>
   {% for label, val, tone, ico, link in [
     ('Đầu sách lưu hành', s.total_titles, 'primary', 'book', url_for('admin.books')),
-    ('Độc giả kích hoạt', s.readers, 'success', 'users', url_for('admin.users')),
+    ('Độc giả hoạt động', s.readers, 'success', 'users', url_for('admin.users')),
     ('Chờ duyệt online', s.pending, 'warning', 'clock', url_for('admin.loans', status='pending')),
     ('Chờ lấy tại quầy', s.ready, 'info', 'clock', url_for('admin.loans', status='ready')),
     ('Đang lưu thông', s.borrowing, 'primary', 'book', url_for('admin.loans', status='borrowing')),

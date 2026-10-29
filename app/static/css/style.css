@@ -1417,6 +1417,7 @@ main {
 
 /* Cover Image / Placeholder Container (Strict 2:3 Aspect Ratio) */
 .card-cover-wrapper {
+  display: block;          /* <a> tag cần block để aspect-ratio hoạt động */
   width: 100%;
   aspect-ratio: 2 / 3;
   border-radius: 14px;
@@ -1425,12 +1426,23 @@ main {
   border: 1px solid var(--color-stone);
   position: relative;
   flex-shrink: 0;
+  /* Đảm bảo con không thể vượt ra ngoài tỉ lệ này */
+  max-height: 100%;
 }
 
 .card-cover-wrapper .cover {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   display: block;
+  aspect-ratio: unset !important;
+}
+
+/* img bên trong cover đã absolute, cover-img là relative container */
+.card-cover-wrapper .cover-img {
+  position: absolute;
+  inset: 0;
 }
 
 .card-content {
@@ -1573,7 +1585,6 @@ main {
   height: 100%;
   position: relative;
   overflow: hidden;
-  aspect-ratio: 2 / 3;
 }
 
 .cover-img {
@@ -1581,10 +1592,19 @@ main {
 }
 
 .cover-img img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center top;
   display: block;
+}
+
+/* .cover đứng độc lập (không trong wrapper có sẵn aspect-ratio) */
+.stacked-cover-item > .cover,
+.loan-card > .cover {
+  aspect-ratio: 2 / 3;
 }
 
 /* Editorial Fallback Paper Covers */
@@ -2383,7 +2403,7 @@ main {
 
 @media (min-width: 1400px) {
   .stat-grid {
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
@@ -3219,7 +3239,7 @@ main {
    ========================================================================== */
 .category-admin-grid {
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: 1fr 320px;
   gap: 28px;
   align-items: start;
 }
@@ -3617,14 +3637,48 @@ main {
   .user-detail-grid { grid-template-columns: 1fr; }
 }
 
+.user-info-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-top: 0;
+}
+.user-info-table th,
+.user-info-table td {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--color-stone);
+  font-size: 0.9rem;
+  vertical-align: middle;
+  text-align: left;
+}
+.user-info-table tbody tr:last-child th,
+.user-info-table tbody tr:last-child td {
+  border-bottom: none;
+}
+/* Bo góc row cuối để khớp với card cha (radius-cards = 24px) */
+.user-info-table tbody tr:last-child th:first-child {
+  border-bottom-left-radius: 20px;
+}
+.user-info-table tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 20px;
+}
+/* Override .table th — th ở đây là label dòng, không phải header */
 .user-info-table th {
   width: 140px;
-  color: var(--color-cloud-dark);
-  font-weight: 600;
-  border-bottom: 1px solid var(--color-stone);
+  background: transparent !important;
+  color: var(--color-cloud-dark) !important;
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  white-space: nowrap;
 }
 .user-info-table td {
-  border-bottom: 1px solid var(--color-stone);
+  color: var(--color-slate-dark);
+}
+.user-info-table tbody tr:hover th,
+.user-info-table tbody tr:hover td {
+  background: var(--color-oat-warm) !important;
 }
 
 /* Barcode and Price Tags */
@@ -3938,3 +3992,37 @@ main {
 .my-2 { margin-top: 8px; margin-bottom: 8px; }
 .ml-1 { margin-left: 4px; }
 .ml-2 { margin-left: 8px; }
+
+/* ==========================================================================
+   EMPTY STATE (used by the empty() macro + .empty-card wrapper)
+   ========================================================================== */
+.empty-card {
+  padding: 48px 32px;
+  text-align: center;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.empty .big {
+  font-size: 2.5rem;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.empty h3 {
+  font-family: var(--font-anthropic-serif);
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--color-slate-dark);
+}
+
+.empty p {
+  font-size: 0.9rem;
+  color: var(--color-cloud-dark);
+  max-width: 400px;
+}

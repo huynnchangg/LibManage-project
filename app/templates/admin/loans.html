@@ -30,7 +30,7 @@
   <form class="search-form-admin" method="get">
     <input type="hidden" name="status" value="{{ status }}">
     <span class="search-icon">{{ icon('search') }}</span>
-    <input name="q" value="{{ q or '' }}" class="input input-search-admin" placeholder="Tìm theo mã phiếu (PM-...), độc giả, mã SV, tựa sách, mã vạch...">
+    <input name="q" value="{{ q or '' }}" class="input input-search-admin" placeholder="Tìm theo mã phiếu, độc giả, mã SV,...">
     <button class="btn btn-search-admin" type="submit">Tìm kiếm</button>
     {% if q %}
     <a class="btn btn-reset-search" href="{{ url_for('admin.loans', status=status) }}">{{ icon('x') }} Đặt lại</a>

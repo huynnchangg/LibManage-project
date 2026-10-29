@@ -35,7 +35,8 @@
           <div class="muted">@{{ user.username }}</div>
         </div>
       </div>
-      <table class="table table-sm user-info-table">
+      <div class="table-wrap mt-2">
+      <table class="table user-info-table">
         <tr><th>Email</th><td>{{ user.email }}</td></tr>
         <tr><th>Mã sinh viên</th><td><span class="code-tag">{{ user.student_code or '—' }}</span></td></tr>
         <tr><th>Ngày đăng ký</th><td>{{ user.created_at|dt }}</td></tr>
@@ -47,22 +48,29 @@
           {% endif %}
         </td></tr>
       </table>
+      </div>
     </div>
 
     <div>
       <div class="user-stat-grid">
         <div class="card stat-card">
-          <div class="stat-num" data-count="{{ loans|length }}">{{ loans|length }}</div>
-          <div class="stat-label">Tổng lượt mượn</div>
+          <div class="stat-card-info">
+            <span class="stat-card-label">Tổng lượt mượn</span>
+            <b class="stat-card-val" data-count="{{ loans|length }}">{{ loans|length }}</b>
+          </div>
         </div>
         <div class="card stat-card">
           {% set cur_b = loans|selectattr('status','in',['borrowing','ready_for_pickup'])|list|length %}
-          <div class="stat-num" data-count="{{ cur_b }}">{{ cur_b }}</div>
-          <div class="stat-label">Đang giữ/mượn</div>
+          <div class="stat-card-info">
+            <span class="stat-card-label">Đang giữ/mượn</span>
+            <b class="stat-card-val" data-count="{{ cur_b }}">{{ cur_b }}</b>
+          </div>
         </div>
         <div class="card stat-card {{ 'tone-danger' if unpaid > 0 }}">
-          <div class="stat-num">{{ unpaid|vnd }}</div>
-          <div class="stat-label">Nợ phạt chưa thu</div>
+          <div class="stat-card-info">
+            <span class="stat-card-label">Nợ phạt chưa thu</span>
+            <b class="stat-card-val" style="{{ 'color:var(--color-danger)' if unpaid > 0 }}">{{ unpaid|vnd }}</b>
+          </div>
         </div>
       </div>
     </div>
