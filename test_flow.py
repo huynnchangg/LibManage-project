@@ -12,10 +12,13 @@ from app import create_app
 from app.config import Config
 from app.extensions import db
 from app.models import (
-    Book, BookCopy, CartItem, Category, Loan, LoanSlip, User,
-    LOAN_BORROWING, LOAN_PENDING, LOAN_READY, LOAN_RETURNED,
+    Book, BookCopy, CartItem, Category, FinePayment,
+    Loan, LoanSlip, User,
+    LOAN_BORROWING, LOAN_PENDING, LOAN_READY,
+    LOAN_RETURNED, LOAN_CANCELLED,
     COPY_AVAILABLE, COPY_BORROWED, COPY_RESERVED
 )
+from app.services import loan_service
 
 class T(Config):
     TESTING = True
@@ -186,14 +189,157 @@ with app.app_context():
 
 print("B06: Đã kiểm tra thu tiền, lịch sử giao dịch và chống thu trùng.")
 
+print("--- B04: Kiểm tra gia hạn lượt mượn ---")
+
+
+with app.app_context():
+    from app.services.loan_service import LoanError
+
+    # Lấy lại độc giả và sách từ database trong phiên hiện tại
+    reader1 = db.session.get(User, 2)
+    book2 = db.session.get(Book, 2)
+
+    assert reader1 is not None, "Không tìm thấy độc giả r1"
+    assert book2 is not None, "Không tìm thấy sách b2"
+
+    # Tạo độc giả thứ hai để kiểm tra quyền sở hữu
+    r2 = User(
+        username="r2",
+        email="r2@neu.edu.vn",
+        full_name="Sinh viên R2",
+        student_code="11210002"
+    )
+    r2.set_password("123456")
+    db.session.add(r2)
+    db.session.flush()
+
+    # Tạo phiếu mượn
+    slip_renew = LoanSlip(
+        code="TEST-RENEW-001",
+        user_id=reader1.id,
+        slip_type="direct",
+        status=LOAN_BORROWING,
+        due_date=date.today() + timedelta(days=3)
+    )
+    db.session.add(slip_renew)
+    db.session.flush()
+
+    # Tạo lượt mượn
+    loan_renew = Loan(
+        slip_id=slip_renew.id,
+        user_id=reader1.id,
+        book_id=book2.id,
+        status=LOAN_BORROWING,
+        due_date=date.today() + timedelta(days=3),
+        renew_count=0,
+        fine_amount=0,
+        fine_paid=False
+    )
+    db.session.add(loan_renew)
+    db.session.commit()
+
+    # 1. Gia hạn lần đầu phải thành công
+    old_due_date = loan_renew.due_date
+    loan_service.renew(loan_renew, reader1)
+
+    assert loan_renew.due_date == old_due_date + timedelta(days=7)
+    assert loan_renew.renew_count == 1
+    assert loan_renew.slip.due_date == loan_renew.due_date
+
+    print("B04.1: Gia hạn lần đầu thành công, hạn trả tăng 7 ngày.")
+
+    # 2. Không cho gia hạn lần thứ hai
+    try:
+        loan_service.renew(loan_renew, reader1)
+        raise AssertionError("Lỗi: hệ thống cho phép gia hạn lần thứ hai!")
+    except LoanError:
+        pass
+
+    assert loan_renew.renew_count == 1
+    print("B04.2: Đã chặn gia hạn vượt quá số lần cho phép.")
+
+    # 3. Không cho gia hạn khi sách đã quá hạn
+    loan_renew.renew_count = 0
+    loan_renew.due_date = date.today() - timedelta(days=1)
+    loan_renew.slip.due_date = loan_renew.due_date
+    db.session.commit()
+
+    try:
+        loan_service.renew(loan_renew, reader1)
+        raise AssertionError("Lỗi: hệ thống cho phép gia hạn sách quá hạn!")
+    except LoanError:
+        pass
+
+    print("B04.3: Đã chặn gia hạn sách quá hạn.")
+
+    # Đưa hạn trả về tương lai để tiếp tục kiểm tra
+    loan_renew.due_date = date.today() + timedelta(days=3)
+    loan_renew.slip.due_date = loan_renew.due_date
+    loan_renew.renew_count = 0
+    loan_renew.fine_amount = 5000
+    loan_renew.fine_paid = False
+    db.session.commit()
+
+    # 4. Không cho gia hạn khi còn tiền phạt chưa thanh toán
+    try:
+        loan_service.renew(loan_renew, reader1)
+        raise AssertionError("Lỗi: hệ thống cho gia hạn khi còn nợ phạt!")
+    except LoanError:
+        pass
+
+    print("B04.4: Đã chặn gia hạn khi còn tiền phạt chưa thanh toán.")
+
+    # Xóa khoản phạt để kiểm tra quyền sở hữu
+    loan_renew.fine_amount = 0
+    loan_renew.fine_paid = False
+    db.session.commit()
+
+    # 5. Không cho người khác gia hạn lượt mượn
+    other_user = db.session.get(User, r2.id)
+
+    try:
+        loan_service.renew(loan_renew, other_user)
+        raise AssertionError("Lỗi: hệ thống cho phép người khác gia hạn!")
+    except LoanError:
+        pass
+
+    print("B04.5: Đã chặn người khác gia hạn lượt mượn.")
+
+print("B04: Hoàn thành 5 trường hợp kiểm thử.")
+
 
 print("--- 7. Kiểm tra cho mượn trực tiếp tại quầy (Walk-in Checkout) ---")
-ok(cl.post("/admin/loans/checkout", data={"student_query": "11210001", "barcodes": "BC000201", "note": "Mượn trực tiếp tại quầy"}, follow_redirects=True), "lập phiếu mượn")
+ok(cl.post(
+    "/admin/loans/checkout",
+    data={
+        "student_query": "11210001",
+        "barcodes": "BC000201",
+        "note": "Mượn trực tiếp tại quầy"
+    },
+    follow_redirects=True
+), "lập phiếu mượn")
+
 with app.app_context():
-    slip_direct = LoanSlip.query.filter_by(slip_type="direct").first()
-    assert slip_direct is not None
+    slip_direct = LoanSlip.query.filter_by(
+    slip_type="direct"
+    ).order_by(LoanSlip.id.desc()).first()
+
+    assert slip_direct is not None, "Không tìm thấy phiếu mượn trực tiếp"
     assert slip_direct.status == LOAN_BORROWING
-    assert slip_direct.items[0].copy.barcode == "BC000201"
+
+    assert len(slip_direct.items) > 0, "Phiếu mượn không có lượt mượn"
+
+    direct_loan = slip_direct.items[0]
+
+    assert direct_loan.copy is not None, (
+        f"Lượt mượn ID={direct_loan.id} chưa liên kết với bản sách. "
+        f"copy_id hiện tại: {direct_loan.copy_id}"
+    )
+
+    assert direct_loan.copy.barcode == "BC000201"
+
+    print("Mục 7: Cho mượn trực tiếp tại quầy thành công.")
+
 
 print("--- 8. Kiểm tra nhận trả sách kèm bồi thường hư hại (50%) ---")
 with app.app_context():
