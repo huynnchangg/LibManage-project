@@ -1,0 +1,148 @@
+{% extends "admin/_layout.html" %}
+{% from "macros.html" import csrf, icon, status_badge, empty %}
+{% block title %}{{ user.full_name }} – Chi tiết độc giả{% endblock %}
+{% block admin_content %}
+
+<div class="page-head" data-reveal>
+  <div>
+    <span class="eyebrow">
+      <a href="{{ url_for('admin.users') }}">{{ icon('users') }} Độc giả</a> /
+    </span>
+    <h1 class="mt-1">{{ user.full_name }}</h1>
+  </div>
+  <div class="flex gap-2 wrap">
+    <button type="button" class="btn btn-ghost" id="btn-open-reset-pwd">
+      {{ icon('shield') }} Đặt lại mật khẩu
+    </button>
+    <form method="post" action="{{ url_for('admin.user_toggle', user_id=user.id) }}"
+      {% if user.active %}data-confirm="Xác nhận khóa tài khoản độc giả @{{ user.username }}?"{% endif %}>
+      {{ csrf() }}
+      <button class="btn {{ 'btn-danger' if user.active else 'btn-success' }}">
+        {{ 'Khoá tài khoản' if user.active else 'Mở khoá' }}
+      </button>
+    </form>
+  </div>
+</div>
+
+{# --- Thông tin tài khoản & thống kê --- #}
+<div class="flex gap-3 wrap mb-4" data-reveal>
+  <div class="card card-pad" style="flex:1;min-width:300px">
+    <div class="flex items-center gap-2 mb-3">
+      <span class="avatar" style="width:48px;height:48px;font-size:1.25rem">{{ user.full_name[:1]|upper }}</span>
+      <div>
+        <h3 style="margin:0">{{ user.full_name }}</h3>
+        <div class="muted">@{{ user.username }}</div>
+      </div>
+    </div>
+    <div class="flex between py-1" style="border-bottom:1px solid var(--line)"><span class="muted">Mã sinh viên</span><b>{{ user.student_code or '—' }}</b></div>
+    <div class="flex between py-1" style="border-bottom:1px solid var(--line)"><span class="muted">Email</span><span>{{ user.email }}</span></div>
+    <div class="flex between py-1" style="border-bottom:1px solid var(--line)"><span class="muted">Ngày đăng ký</span><span>{{ user.created_at|dt('%d/%m/%Y') }}</span></div>
+    <div class="flex between py-1"><span class="muted">Trạng thái</span>
+      {% if user.active %}<span class="badge badge-success">Hoạt động</span>{% else %}<span class="badge badge-secondary">Bị khoá</span>{% endif %}
+    </div>
+  </div>
+
+  <div class="summary" style="flex:1.5;min-width:320px;margin:0">
+    <div class="card sum-card"><div class="sum-ico tone-primary">{{ icon('book') }}</div><div><b>{{ loans|length }}</b><span>Tổng lượt mượn</span></div></div>
+    {% set cur_b = loans|selectattr('status','in',['borrowing','ready_for_pickup'])|list|length %}
+    <div class="card sum-card"><div class="sum-ico tone-warning">{{ icon('clock') }}</div><div><b>{{ cur_b }}</b><span>Đang mượn/chờ</span></div></div>
+    <div class="card sum-card"><div class="sum-ico tone-danger">{{ icon('coins') }}</div><div><b style="font-size:1.2rem">{{ unpaid|vnd }}</b><span>Nợ phạt</span></div></div>
+  </div>
+</div>
+
+{# --- Modal Đặt lại mật khẩu --- #}
+<div id="reset-pwd-modal" class="modal-back" role="dialog" aria-modal="true">
+  <div class="card modal" style="max-width:440px;width:100%">
+    <div class="m-ico">{{ icon('shield') }}</div>
+    <h3>Đặt lại mật khẩu độc giả</h3>
+    <p class="muted mt-1 small">Gán mật khẩu mới trực tiếp cho tài khoản @{{ user.username }}.</p>
+    <form method="post" action="{{ url_for('admin.user_reset_password', user_id=user.id) }}" class="mt-3">
+      {{ csrf() }}
+      <div class="field text-left">
+        <label for="new_password">Mật khẩu mới *</label>
+        <input id="new_password" name="new_password" class="input" required value="reader123" autocomplete="off">
+        <small class="muted">Gợi ý mặc định: reader123</small>
+      </div>
+      <div class="flex gap-2 justify-end mt-3">
+        <button type="button" class="btn btn-ghost" id="reset-pwd-cancel">Huỷ bỏ</button>
+        <button type="submit" class="btn btn-primary">Xác nhận đổi</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# --- Lịch sử mượn sách --- #}
+<h2 class="mt-4 mb-2" data-reveal>Lịch sử mượn trả</h2>
+
+{% if loans %}
+<div class="table-wrap card" data-reveal>
+  <table class="table">
+    <thead>
+      <tr>
+        <th style="width:40px">#</th>
+        <th>Phiếu</th>
+        <th>Tác phẩm &amp; Bản sao</th>
+        <th>Yêu cầu</th>
+        <th>Hạn trả</th>
+        <th>Ngày trả</th>
+        <th>Tiền phạt</th>
+        <th>Trạng thái</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for l in loans %}
+    <tr>
+      <td class="muted">{{ loop.index }}</td>
+      <td>
+        {% if l.slip %}
+          <span class="badge badge-primary badge-plain">{{ l.slip.code }}</span>
+        {% else %}
+          <span class="muted">—</span>
+        {% endif %}
+      </td>
+      <td>
+        <b>{{ l.book.title }}</b>
+        {% if l.copy %}
+          <div class="small muted">Mã vạch: <span style="font-family:monospace">{{ l.copy.barcode }}</span></div>
+        {% endif %}
+      </td>
+      <td>{{ l.requested_at|dt('%d/%m/%Y') }}</td>
+      <td>
+        {{ l.due_date.strftime('%d/%m/%Y') if l.due_date else '—' }}
+        {% if l.is_overdue %}
+          <div class="small" style="color:var(--danger);font-weight:600">Trễ {{ l.overdue_days }} ngày</div>
+        {% endif %}
+      </td>
+      <td>{{ l.returned_at|dt('%d/%m/%Y') if l.returned_at else '—' }}</td>
+      <td>
+        {% if l.fine_amount %}
+          <b style="color:var(--{{ 'success' if l.fine_paid else 'danger' }})">{{ l.fine_amount|vnd }}</b>
+          <div class="small">{{ 'Đã thu' if l.fine_paid else 'Chưa nộp' }}</div>
+        {% else %}
+          <span class="muted">—</span>
+        {% endif %}
+      </td>
+      <td>{{ status_badge(l) }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card">{{ empty('📚', 'Chưa có lịch sử mượn', 'Độc giả này chưa mượn sách nào.') }}</div>
+{% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const modal = document.getElementById('reset-pwd-modal');
+  const openBtn = document.getElementById('btn-open-reset-pwd');
+  const cancelBtn = document.getElementById('reset-pwd-cancel');
+  if (modal && openBtn) {
+    openBtn.addEventListener('click', () => modal.classList.add('open'));
+    cancelBtn && cancelBtn.addEventListener('click', () => modal.classList.remove('open'));
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('open'); });
+  }
+});
+</script>
+{% endblock %}
+

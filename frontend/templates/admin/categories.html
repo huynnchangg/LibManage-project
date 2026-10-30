@@ -1,0 +1,118 @@
+{% extends "admin/_layout.html" %}
+{% from "macros.html" import csrf, icon, empty %}
+{% block title %}Thể loại sách{% endblock %}
+{% block admin_content %}
+<div class="page-head" data-reveal>
+  <div>
+    <span class="eyebrow">{{ icon('layers') }} Phân loại tài liệu</span>
+    <h1 class="mt-1">Chuyên mục &amp; Thể loại</h1>
+  </div>
+</div>
+
+<div class="flex gap-3 wrap" data-reveal>
+  {# Form thêm chuyên mục mới #}
+  <div class="card card-pad" style="width:340px">
+    <h3>Tạo thể loại mới</h3>
+    <p class="muted small mb-3">Tạo thể loại để phân loại và sắp xếp sách trong kho khoa học hơn.</p>
+    <form method="post">
+      {{ csrf() }}
+      <div class="field">
+        <label for="cat-name">Tên thể loại *</label>
+        <input id="cat-name" name="name" class="input" placeholder="Ví dụ: Khoa học dữ liệu..." required autocomplete="off">
+      </div>
+      <button class="btn btn-primary btn-block mt-3">{{ icon('plus') }} Thêm thể loại</button>
+    </form>
+  </div>
+
+  {# Bảng danh sách thể loại #}
+  <div style="flex:1;min-width:320px">
+    {% if categories %}
+    <div class="table-wrap card">
+      <table class="table" style="min-width:0">
+        <thead>
+          <tr>
+            <th style="width:45px">STT</th>
+            <th>Tên thể loại</th>
+            <th style="width:130px;white-space:nowrap">Số đầu sách</th>
+            <th class="text-right" style="width:130px;white-space:nowrap">Thao tác</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for c in categories %}
+        <tr>
+          <td class="muted">{{ loop.index }}</td>
+          <td><b>{{ c.name }}</b></td>
+          <td style="white-space:nowrap">
+            <span class="badge badge-primary badge-plain">
+              {{ c.books|length }} đầu sách
+            </span>
+          </td>
+          <td class="text-right" style="white-space:nowrap">
+            <div class="row-actions" style="flex-wrap:nowrap">
+              <button type="button" class="btn btn-ghost btn-sm btn-edit-cat"
+                      data-id="{{ c.id }}"
+                      data-name="{{ c.name }}"
+                      data-action="{{ url_for('admin.category_edit', cat_id=c.id) }}"
+                      title="Đổi tên thể loại">
+                {{ icon('edit') }} Sửa
+              </button>
+              <form method="post" action="{{ url_for('admin.category_delete', cat_id=c.id) }}" data-confirm="Xác nhận xoá thể loại “{{ c.name }}”? Thao tác này chỉ thực hiện được khi không còn đầu sách nào thuộc thể loại này.">
+                {{ csrf() }}
+                <button class="btn btn-danger btn-sm" title="Xóa thể loại">{{ icon('trash') }} Xóa</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="card">{{ empty('📂', 'Chưa có thể loại nào', 'Nhập tên vào biểu mẫu bên cạnh để tạo thể loại đầu tiên.') }}</div>
+    {% endif %}
+  </div>
+</div>
+
+{# Modal Sửa tên thể loại #}
+<div id="edit-cat-modal" class="modal-back" role="dialog" aria-modal="true">
+  <div class="card modal" style="max-width:440px;width:100%">
+    <div class="m-ico">{{ icon('edit') }}</div>
+    <h3>Đổi tên thể loại</h3>
+    <p class="muted mt-1 small">Cập nhật tên thể loại mới cho các đầu sách thuộc chuyên mục này.</p>
+    <form method="post" id="edit-cat-form" class="mt-3">
+      {{ csrf() }}
+      <div class="field text-left">
+        <label for="edit-cat-name-input">Tên thể loại mới *</label>
+        <input id="edit-cat-name-input" name="name" class="input" required autocomplete="off">
+      </div>
+      <div class="flex gap-2 justify-end mt-3">
+        <button type="button" class="btn btn-ghost" id="edit-cat-cancel">Huỷ bỏ</button>
+        <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const modal = document.getElementById('edit-cat-modal');
+  if (!modal) return;
+  const form = document.getElementById('edit-cat-form');
+  const input = document.getElementById('edit-cat-name-input');
+  const cancel = document.getElementById('edit-cat-cancel');
+
+  document.querySelectorAll('.btn-edit-cat').forEach(btn => {
+    btn.addEventListener('click', () => {
+      form.action = btn.dataset.action;
+      input.value = btn.dataset.name;
+      modal.classList.add('open');
+      setTimeout(() => input.focus(), 100);
+    });
+  });
+
+  const close = () => modal.classList.remove('open');
+  cancel && cancel.addEventListener('click', close);
+  modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends "admin/_layout.html" %}
+{% from "macros.html" import icon %}
+{% block title %}Bản sao: {{ book.title }}{% endblock %}
+{% block admin_content %}
+<div class="page-head" data-reveal>
+  <div>
+    <span class="eyebrow">
+      <a href="{{ url_for('admin.books') }}">{{ icon('book') }} Quản lý sách</a> /
+    </span>
+    <h1 class="mt-1">Bản sao sách (BookCopy)</h1>
+    <p class="muted mt-1">Đầu sách: <b>{{ book.title }}</b> · Tác giả: {{ book.author }} · Giá bìa: <b>{{ book.price|vnd }}</b></p>
+  </div>
+  <a class="btn btn-ghost" href="{{ url_for('admin.books') }}">{{ icon('arrow') }} Quay lại kho sách</a>
+</div>
+
+<div class="table-wrap card" data-reveal>
+  <table class="table">
+    <thead>
+      <tr>
+        <th style="width:50px">STT</th>
+        <th>Mã vạch (Barcode)</th>
+        <th>Vị trí kệ</th>
+        <th>Trạng thái</th>
+        <th>Tình trạng thực tế</th>
+        <th>Ngày nhập</th>
+        <th class="text-right">Lượt mượn</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for cp in book.copies %}
+    <tr>
+      <td class="muted">{{ loop.index }}</td>
+      <td>
+        <span class="badge badge-primary badge-plain" style="font-family:monospace">{{ cp.barcode }}</span>
+      </td>
+      <td>{{ cp.location or book.location or 'Kho tổng hợp' }}</td>
+      <td>
+        {% set lbl, tone = cp.status_label %}
+        <span class="badge badge-{{ tone }}">{{ lbl }}</span>
+      </td>
+      <td>
+        <b>{{ cp.condition or 'Tốt' }}</b>
+        {% if cp.note %}<div class="small muted">{{ cp.note }}</div>{% endif %}
+      </td>
+      <td>{{ cp.created_at|dt('%d/%m/%Y') }}</td>
+      <td class="text-right">
+        <span class="badge badge-secondary badge-plain">{{ cp.loans|length }} lượt</span>
+      </td>
+    </tr>
+    {% else %}
+    <tr>
+      <td colspan="7" class="center muted py-4">Chưa có bản sao nào được tạo cho ấn bản này.</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+

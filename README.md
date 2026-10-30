@@ -1,7 +1,7 @@
 # Hệ thống quản lý mượn trả sách thư viện
 
 Bài tập nhóm – Lập trình Web (Backend: Python/Flask, CSDL: SQLite).  
-Thành viên: **Huyền Trang** (TV1 – UI/Frontend) · **Khánh Linh** (TV2 – nghiệp vụ mượn/trả) · **Thuận Phạm** (TV3 – auth, CRUD, quản lý độc giả, dashboard, kiến trúc hệ thống)
+Thành viên: **Huyền Trang** (TV1 – UI/Frontend, tester, nghiệp vụ tra cứu sách) · **Khánh Linh** (TV2 – nghiệp vụ mượn/trả) · **Thuận Phạm** (TV3 – auth, CRUD, quản lý độc giả, dashboard, kiến trúc hệ thống)
 
 ---
 

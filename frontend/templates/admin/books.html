@@ -1,0 +1,78 @@
+{% extends "admin/_layout.html" %}
+{% from "macros.html" import csrf, icon, pager, empty %}
+{% block title %}Quản lý sách{% endblock %}
+{% block admin_content %}
+<div class="page-head" data-reveal>
+  <div><span class="eyebrow">{{ icon('book') }} Kho sách</span><h1 class="mt-1">Quản lý sách</h1></div>
+  <a class="btn btn-primary" href="{{ url_for('admin.book_new') }}">{{ icon('plus') }} Thêm sách</a>
+</div>
+
+<form class="toolbar wrap gap-2" method="get" data-reveal>
+  <input name="q" value="{{ q or '' }}" class="input" style="max-width:320px" placeholder="Tìm theo tên, tác giả, ISBN...">
+  <select name="category" class="select" style="max-width:220px" onchange="this.form.submit()">
+    <option value="">— Tất cả thể loại —</option>
+    {% for c in categories %}
+    <option value="{{ c.id }}" {{ 'selected' if category_id == c.id }}>{{ c.name }}</option>
+    {% endfor %}
+  </select>
+  <button class="btn btn-ghost">{{ icon('search') }} Tìm</button>
+  {% if q or category_id %}
+  <a class="btn btn-ghost" href="{{ url_for('admin.books') }}">{{ icon('x') }} Đặt lại</a>
+  {% endif %}
+</form>
+
+{% if pagination.items %}
+<div class="table-wrap" data-reveal><table class="table">
+  <thead>
+    <tr>
+      <th>Tên sách &amp; Tác giả</th>
+      <th>Thể loại</th>
+      <th>Vị trí kệ</th>
+      <th>Giá bìa</th>
+      <th>Sẵn có / Tổng</th>
+      <th class="text-right">Thao tác</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for b in pagination.items %}
+  <tr>
+    <td>
+      <b>{{ b.title }}</b>
+      <div class="small muted">{{ b.author }}{% if b.year %} · {{ b.year }}{% endif %}</div>
+    </td>
+    <td>{% if b.category %}<span class="badge badge-primary badge-plain">{{ b.category.name }}</span>{% else %}—{% endif %}</td>
+    <td>{{ b.location or 'Chưa xếp' }}</td>
+    <td>{{ b.price|vnd }}</td>
+    <td>
+      <a href="{{ url_for('admin.book_copies', book_id=b.id) }}" title="Xem danh sách bản sao">
+        <b style="color:var(--{{ 'danger' if b.available_copies < 1 else 'success' }})">{{ b.available_copies }}</b> / {{ b.total_copies }} bản
+      </a>
+      {% if not b.is_active %}
+      <div><span class="badge badge-secondary badge-plain">Đang ẩn</span></div>
+      {% endif %}
+    </td>
+    <td>
+      <div class="row-actions">
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.book_copies', book_id=b.id) }}" title="Mã vạch bản sao">{{ icon('barcode') }} Bản sao</a>
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.book_edit', book_id=b.id) }}">{{ icon('edit') }} Sửa</a>
+        <form method="post" action="{{ url_for('admin.book_toggle', book_id=b.id) }}">
+          {{ csrf() }}
+          <button class="btn btn-ghost btn-sm" title="{{ 'Ẩn khỏi độc giả' if b.is_active else 'Hiện lại' }}">
+            {{ 'Ẩn' if b.is_active else 'Hiện' }}
+          </button>
+        </form>
+        <form method="post" action="{{ url_for('admin.book_delete', book_id=b.id) }}" data-confirm="Xoá sách “{{ b.title }}”? Thao tác này không thể hoàn tác.">
+          {{ csrf() }}
+          <button class="btn btn-danger btn-sm">{{ icon('trash') }} Xoá</button>
+        </form>
+      </div>
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{{ pager(pagination, 'admin.books', {'q': q or None, 'category': category_id or None}) }}
+{% else %}
+<div class="card">{{ empty('📚', 'Chưa có sách phù hợp', 'Thử tìm kiếm với từ khoá khác hoặc bấm “Thêm sách”.') }}</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,347 @@
+{% extends "admin/_layout.html" %}
+{% from "macros.html" import csrf, icon, status_badge, empty, pager %}
+{% block title %}Quản lý mượn trả{% endblock %}
+{% block admin_content %}
+<div class="page-head" data-reveal>
+  <div>
+    <span class="eyebrow">{{ icon('loans') }} Lưu thông tài liệu</span>
+    <h1 class="mt-1">Quản lý mượn trả</h1>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('admin.loan_checkout') }}">{{ icon('plus') }} Cho mượn tại quầy</a>
+</div>
+
+{# Bộ lọc Tabs #}
+<div class="tabs" data-reveal>
+  {% for key, label in [
+    ('pending','Chờ duyệt'),
+    ('ready','Chờ lấy (48h)'),
+    ('borrowing','Đang mượn'),
+    ('overdue','Quá hạn'),
+    ('returned','Đã trả'),
+    ('rejected','Từ chối'),
+    ('all','Tất cả')
+  ] %}
+  <a class="tab {{ 'active' if status == key }}" href="{{ url_for('admin.loans', status=key, q=q or None) }}">{{ label }}</a>
+  {% endfor %}
+</div>
+
+{# Thanh tìm kiếm #}
+<form class="toolbar" method="get" data-reveal>
+  <input type="hidden" name="status" value="{{ status }}">
+  <input name="q" value="{{ q or '' }}" class="input" style="max-width:380px" placeholder="Mã phiếu (PM-...), độc giả, mã SV, tựa sách, barcode...">
+  <button class="btn btn-ghost">{{ icon('search') }} Tìm</button>
+  {% if q %}
+  <a class="btn btn-ghost" href="{{ url_for('admin.loans', status=status) }}">{{ icon('x') }} Đặt lại</a>
+  {% endif %}
+</form>
+
+{% if loans %}
+<div class="table-wrap card" data-reveal>
+  <table class="table">
+    <thead>
+      <tr>
+        <th style="width:40px">#</th>
+        <th>Phiếu / Mã vạch</th>
+        <th>Độc giả</th>
+        <th>Tài liệu mượn</th>
+        <th>Thời hạn</th>
+        <th>Trạng thái</th>
+        <th class="text-right">Thao tác</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for l in loans %}
+    <tr>
+      <td class="muted">{{ (pagination.page - 1) * pagination.per_page + loop.index }}</td>
+      <td>
+        {% if l.slip %}
+          <a href="{{ url_for('main.slip_detail', slip_id=l.slip_id) }}">
+            <span class="badge badge-primary badge-plain">{{ l.slip.code }}</span>
+          </a>
+          <div class="small muted">{{ 'Trực tuyến' if l.slip.slip_type == 'online' else 'Tại quầy' }}</div>
+        {% else %}
+          <span class="muted">—</span>
+        {% endif %}
+        {% if l.copy %}
+          <div class="small mt-1"><span style="font-family:monospace">{{ l.copy.barcode }}</span></div>
+        {% endif %}
+      </td>
+      <td>
+        <a href="{{ url_for('admin.user_detail', user_id=l.user_id) }}"><b>{{ l.user.full_name }}</b></a>
+        <div class="small muted">{{ l.user.student_code or l.user.username }}</div>
+      </td>
+      <td>
+        <b>{{ l.book.title }}</b>
+        <div class="small muted">Kho còn {{ l.book.available_copies }}/{{ l.book.total_copies }} bản · Giá: {{ l.book.price|vnd }}</div>
+      </td>
+      <td>
+        {% if l.status == 'ready_for_pickup' %}
+          <div class="small muted">Giữ chỗ đến:</div>
+          <b style="color:var(--{{ 'danger' if l.is_pickup_expired else 'primary' }})">
+            {{ l.pickup_deadline|dt('%H:%M %d/%m') if l.pickup_deadline else '48 giờ' }}
+          </b>
+          {% if l.is_pickup_expired %}<div class="small" style="color:var(--danger)">Quá 48h!</div>{% endif %}
+        {% elif l.status == 'borrowing' %}
+          <div class="small muted">Hạn trả:</div>
+          <b>{{ l.due_date.strftime('%d/%m/%Y') if l.due_date else '—' }}</b>
+          {% if l.is_overdue %}
+            <div class="small" style="color:var(--danger);font-weight:600">Trễ {{ l.overdue_days }} ngày · {{ l.current_fine|vnd }}</div>
+          {% endif %}
+        {% elif l.status == 'returned' %}
+          <div class="small muted">Trả lúc:</div>
+          <span>{{ l.returned_at|dt if l.returned_at else '—' }}</span>
+        {% else %}
+          <div class="small muted">Yêu cầu:</div>
+          <span>{{ l.requested_at|dt }}</span>
+        {% endif %}
+      </td>
+      <td>{{ status_badge(l) }}</td>
+      <td class="text-right">
+        <div class="row-actions">
+          {% if l.status == 'pending' %}
+            <button type="button" class="btn btn-success btn-sm btn-open-approve"
+                    data-action="{{ url_for('admin.loan_approve', loan_id=l.id) }}"
+                    data-book="{{ l.book.title }}"
+                    data-copies='{{ l.book.copies|selectattr("status","equalto","available")|map(attribute="barcode")|list|tojson }}'>
+              {{ icon('check') }} Duyệt
+            </button>
+            <button type="button" class="btn btn-danger btn-sm btn-open-reject"
+                    data-action="{{ url_for('admin.loan_reject', loan_id=l.id) }}"
+                    data-book="{{ l.book.title }}"
+                    data-user="{{ l.user.full_name }}">
+              {{ icon('x') }} Từ chối
+            </button>
+          {% elif l.status == 'ready_for_pickup' %}
+            <form method="post" action="{{ url_for('admin.loan_handover', loan_id=l.id) }}" data-confirm="Xác nhận bàn giao sách cho sinh viên {{ l.user.full_name }}?">
+              {{ csrf() }}
+              <button class="btn btn-primary btn-sm">{{ icon('check') }} Giao sách</button>
+            </form>
+          {% elif l.status == 'borrowing' %}
+            <button type="button" class="btn btn-primary btn-sm btn-open-return"
+                    data-action="{{ url_for('admin.loan_return', loan_id=l.id) }}"
+                    data-book="{{ l.book.title }}"
+                    data-user="{{ l.user.full_name }}"
+                    data-price="{{ l.book.price }}"
+                    data-overdue-days="{{ l.overdue_days }}"
+                    data-overdue-fine="{{ l.overdue_days * 5000 }}"
+                    data-barcode="{{ l.copy.barcode if l.copy else '' }}">
+              {{ icon('check') }} Nhận trả
+            </button>
+          {% endif %}
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{{ pager(pagination, 'admin.loans', {'status': status, 'q': q or None}) }}
+{% else %}
+<div class="card">{{ empty('📚', 'Không có bản ghi nào', 'Hiện chưa có lượt mượn nào ở mục này.') }}</div>
+{% endif %}
+
+
+{# ========================================================================= #}
+{# MODAL 1: DUYỆT ĐƠN VÀ CHỌN BẢN SAO                                        #}
+{# ========================================================================= #}
+<div id="approve-modal" class="modal-back" role="dialog" aria-modal="true">
+  <div class="card modal" style="max-width:480px;width:100%">
+    <div class="m-ico" style="color:var(--success)">{{ icon('check') }}</div>
+    <h3>Duyệt mượn &amp; Giữ chỗ 48h</h3>
+    <p class="muted mt-1 small" id="approve-desc">Xác nhận duyệt cho độc giả mượn tài liệu này.</p>
+    <form method="post" id="approve-form" class="mt-3">
+      {{ csrf() }}
+      <div class="field text-left">
+        <label for="approve-barcode-select">Chọn bản sao / Mã vạch trên kệ:</label>
+        <select id="approve-barcode-select" name="barcode" class="select">
+          <option value="">— Tự động chọn bản sao sẵn có —</option>
+        </select>
+        <small class="muted">Hệ thống sẽ giữ cuốn sách tại quầy trong 48 giờ để độc giả đến nhận.</small>
+      </div>
+      <div class="flex gap-2 justify-end mt-3">
+        <button type="button" class="btn btn-ghost" id="approve-cancel">Huỷ bỏ</button>
+        <button type="submit" class="btn btn-success">{{ icon('check') }} Xác nhận duyệt</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+{# ========================================================================= #}
+{# MODAL 2: NHẬN TRẢ SÁCH & PHẠT HƯ HỎNG                                      #}
+{# ========================================================================= #}
+<div id="return-modal" class="modal-back" role="dialog" aria-modal="true">
+  <div class="card modal" style="max-width:520px;width:100%">
+    <div class="m-ico">{{ icon('book') }}</div>
+    <h3>Nhận trả &amp; Kiểm tra sách</h3>
+    <p class="muted mt-1 small" id="return-desc">Kiểm tra tình trạng tài liệu khi độc giả hoàn trả tại quầy.</p>
+    <form method="post" id="return-form" class="mt-3 text-left">
+      {{ csrf() }}
+
+      <div class="card card-pad mb-2" style="background:var(--primary-soft);padding:10px 14px" id="return-meta"></div>
+
+      <div class="field">
+        <label>Tình trạng sách khi hoàn trả *</label>
+        <select name="damage_percent" id="return-damage-select" class="select" required>
+          <option value="0">Nguyên vẹn, tốt (Không phạt hư hại)</option>
+          <option value="25">Hư hại nhẹ (Phạt 25% giá bìa: rách góc, gấp mép)</option>
+          <option value="50">Hư hại vừa (Phạt 50% giá bìa: rách bìa, bong gáy)</option>
+          <option value="75">Hư hại nặng (Phạt 75% giá bìa: ướt nhòe, mất trang)</option>
+          <option value="100">Hỏng hoàn toàn / Mất sách (Bồi thường 100% giá bìa)</option>
+        </select>
+      </div>
+
+      <div class="field mt-2">
+        <label for="return-note">Ghi chú tình trạng:</label>
+        <input name="note" id="return-note" class="input" placeholder="Ví dụ: Rách góc trang 12...">
+      </div>
+
+      <div class="card card-pad mt-2" style="background:var(--bg)">
+        <div class="flex between items-center mb-1">
+          <span class="muted small">Phạt quá hạn:</span>
+          <b id="return-overdue-display">0 đ</b>
+        </div>
+        <div class="flex between items-center mb-1">
+          <span class="muted small">Phạt hư hại / mất:</span>
+          <b id="return-damage-display">0 đ</b>
+        </div>
+        <div class="flex between items-center font-bold pt-1" style="border-top:1px solid var(--line)">
+          <span>Tổng tiền phạt:</span>
+          <span style="font-size:1.15rem;color:var(--danger)" id="return-total-display">0 đ</span>
+        </div>
+      </div>
+
+      <div class="field mt-3 flex items-center gap-2">
+        <input type="checkbox" name="pay_now" value="1" id="pay_now_check" checked style="width:18px;height:18px">
+        <label for="pay_now_check" style="margin:0;cursor:pointer"><b>Độc giả thanh toán tiền phạt ngay tại quầy</b></label>
+      </div>
+
+      <div class="flex gap-2 justify-end mt-3">
+        <button type="button" class="btn btn-ghost" id="return-cancel">Huỷ bỏ</button>
+        <button type="submit" class="btn btn-primary">{{ icon('check') }} Hoàn tất nhận trả</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+{# ========================================================================= #}
+{# MODAL 3: TỪ CHỐI MƯỢN SÁCH                                                #}
+{# ========================================================================= #}
+<div id="reject-modal" class="modal-back" role="dialog" aria-modal="true">
+  <div class="card modal" style="max-width:440px;width:100%">
+    <div class="m-ico" style="color:var(--danger)">{{ icon('alert') }}</div>
+    <h3>Từ chối yêu cầu mượn</h3>
+    <p class="muted mt-1 small" id="reject-desc">Xác nhận từ chối yêu cầu mượn.</p>
+    <form method="post" id="reject-form" class="mt-3">
+      {{ csrf() }}
+      <div class="field text-left">
+        <label for="reject-reason">Lý do từ chối (gửi đến độc giả):</label>
+        <input id="reject-reason" name="reason" class="input" placeholder="Ví dụ: Sách đang bảo dưỡng định kỳ..." required autocomplete="off">
+      </div>
+      <div class="flex gap-2 justify-end mt-3">
+        <button type="button" class="btn btn-ghost" id="reject-cancel">Quay lại</button>
+        <button type="submit" class="btn btn-danger">{{ icon('x') }} Xác nhận từ chối</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const fmt = new Intl.NumberFormat('vi-VN');
+
+  // 1. Approve modal
+  const appModal = document.getElementById('approve-modal');
+  if (appModal) {
+    const form = document.getElementById('approve-form');
+    const desc = document.getElementById('approve-desc');
+    const sel = document.getElementById('approve-barcode-select');
+    const cancel = document.getElementById('approve-cancel');
+
+    document.querySelectorAll('.btn-open-approve').forEach(b => {
+      b.addEventListener('click', () => {
+        form.action = b.dataset.action;
+        desc.textContent = `Duyệt mượn cuốn: “${b.dataset.book}” (Giữ chỗ 48h).`;
+        sel.innerHTML = '<option value="">— Tự động gán 1 bản có sẵn —</option>';
+        try {
+          const codes = JSON.parse(b.dataset.copies || '[]');
+          codes.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c; opt.textContent = `Mã vạch: ${c}`;
+            sel.appendChild(opt);
+          });
+        } catch (e) {}
+        appModal.classList.add('open');
+      });
+    });
+    const closeApp = () => appModal.classList.remove('open');
+    cancel && cancel.addEventListener('click', closeApp);
+    appModal.addEventListener('click', (e) => { if (e.target === appModal) closeApp(); });
+  }
+
+  // 2. Return modal with damage calculation
+  const retModal = document.getElementById('return-modal');
+  if (retModal) {
+    const form = document.getElementById('return-form');
+    const desc = document.getElementById('return-desc');
+    const meta = document.getElementById('return-meta');
+    const dmgSel = document.getElementById('return-damage-select');
+    const overdueDisp = document.getElementById('return-overdue-display');
+    const dmgDisp = document.getElementById('return-damage-display');
+    const totalDisp = document.getElementById('return-total-display');
+    const cancel = document.getElementById('return-cancel');
+
+    let curPrice = 0, curOverdueFine = 0;
+
+    const recalc = () => {
+      const pct = parseInt(dmgSel.value || '0', 10);
+      const dmgFine = Math.round(curPrice * (pct / 100));
+      const total = curOverdueFine + dmgFine;
+      dmgDisp.textContent = fmt.format(dmgFine) + ' đ';
+      totalDisp.textContent = fmt.format(total) + ' đ';
+    };
+
+    document.querySelectorAll('.btn-open-return').forEach(b => {
+      b.addEventListener('click', () => {
+        form.action = b.dataset.action;
+        curPrice = parseInt(b.dataset.price || '0', 10);
+        curOverdueFine = parseInt(b.dataset.overdueFine || '0', 10);
+        const overdueDays = parseInt(b.dataset.overdueDays || '0', 10);
+
+        desc.innerHTML = `Độc giả: <b>${b.dataset.user}</b> · Sách: <b>${b.dataset.book}</b>`;
+        meta.innerHTML = `Giá bìa gốc: <b>${fmt.format(curPrice)} đ</b> · ${overdueDays > 0 ? `<span style="color:var(--danger)">Quá hạn: <b>${overdueDays} ngày</b></span>` : '<span style="color:var(--success)">Trả đúng hạn</span>'}`;
+        overdueDisp.textContent = fmt.format(curOverdueFine) + ' đ';
+
+        dmgSel.value = '0';
+        recalc();
+        retModal.classList.add('open');
+      });
+    });
+
+    dmgSel && dmgSel.addEventListener('change', recalc);
+    const closeRet = () => retModal.classList.remove('open');
+    cancel && cancel.addEventListener('click', closeRet);
+    retModal.addEventListener('click', (e) => { if (e.target === retModal) closeRet(); });
+  }
+
+  // 3. Reject modal
+  const rejModal = document.getElementById('reject-modal');
+  if (rejModal) {
+    const form = document.getElementById('reject-form');
+    const desc = document.getElementById('reject-desc');
+    const cancel = document.getElementById('reject-cancel');
+    document.querySelectorAll('.btn-open-reject').forEach(b => {
+      b.addEventListener('click', () => {
+        form.action = b.dataset.action;
+        desc.innerHTML = `Từ chối độc giả <b>${b.dataset.user}</b> mượn cuốn “<b>${b.dataset.book}</b>”.`;
+        rejModal.classList.add('open');
+      });
+    });
+    const closeRej = () => rejModal.classList.remove('open');
+    cancel && cancel.addEventListener('click', closeRej);
+    rejModal.addEventListener('click', (e) => { if (e.target === rejModal) closeRej(); });
+  }
+});
+</script>
+{% endblock %}

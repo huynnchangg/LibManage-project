@@ -1,0 +1,42 @@
+{% extends "admin/_layout.html" %}
+{% from "macros.html" import csrf, icon %}
+{% block title %}Thêm độc giả mới{% endblock %}
+{% block admin_content %}
+<div class="page-head" data-reveal>
+  <div>
+    <span class="eyebrow"><a href="{{ url_for('admin.users') }}">{{ icon('users') }} Quản lý độc giả</a> /</span>
+    <h1 class="mt-1">Thêm tài khoản độc giả mới</h1>
+  </div>
+</div>
+
+<form method="post" class="card card-pad" data-reveal style="max-width:640px">{{ csrf() }}
+  <div class="form-grid">
+    <div class="field col-6">
+      <label>Họ và tên *</label>
+      <input name="full_name" class="input" required placeholder="Nguyễn Văn A" value="{{ request.form.full_name or '' }}" autofocus>
+    </div>
+    <div class="field col-6">
+      <label>Mã sinh viên *</label>
+      <input name="student_code" class="input" required placeholder="11210001" value="{{ request.form.student_code or '' }}">
+    </div>
+    <div class="field col-6">
+      <label>Tên đăng nhập *</label>
+      <input name="username" class="input" required placeholder="reader01" value="{{ request.form.username or '' }}">
+    </div>
+    <div class="field col-6">
+      <label>Email liên hệ *</label>
+      <input name="email" type="email" class="input" required placeholder="sv@neu.edu.vn" value="{{ request.form.email or '' }}">
+    </div>
+    <div class="field col-12">
+      <label>Mật khẩu khởi tạo * (tối thiểu 6 ký tự)</label>
+      <input name="password" type="password" minlength="6" class="input" required placeholder="••••••••">
+    </div>
+  </div>
+
+  <div class="flex gap-2 mt-4">
+    <button class="btn btn-primary btn-lg">{{ icon('check') }} Tạo tài khoản</button>
+    <a class="btn btn-ghost btn-lg" href="{{ url_for('admin.users') }}">Huỷ bỏ</a>
+  </div>
+</form>
+{% endblock %}
+

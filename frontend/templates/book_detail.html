@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% from "macros.html" import csrf, icon, cover, meter %}
+{% block title %}{{ book.title }}{% endblock %}
+{% block content %}
+<nav class="crumbs" aria-label="Breadcrumb">
+  <a href="{{ url_for('main.index') }}">Tra cứu sách</a><span>/</span>
+  {% if book.category %}<a href="{{ url_for('main.index', category=book.category_id) }}">{{ book.category.name }}</a><span>/</span>{% endif %}
+  <span>{{ book.title }}</span>
+</nav>
+
+<div class="detail">
+  <div class="cover-wrap" data-reveal="zoom"><div data-tilt="10">{{ cover(book) }}</div></div>
+
+  <div data-reveal>
+    <span class="badge badge-primary badge-plain">{{ book.category.name if book.category else 'Chưa phân loại' }}</span>
+    <h1>{{ book.title }}</h1>
+    <div class="author">{{ book.author }}</div>
+
+    <div class="meta-grid" data-stagger>
+      <div class="meta" data-reveal><span>ISBN</span><b>{{ book.isbn or '—' }}</b></div>
+      <div class="meta" data-reveal><span>Vị trí kệ</span><b>{{ book.location or 'Kệ đang xếp' }}</b></div>
+      <div class="meta" data-reveal><span>Giá bìa</span><b>{{ book.price|vnd }}</b></div>
+      <div class="meta" data-reveal><span>Năm XB</span><b>{{ book.year or '—' }}</b></div>
+    </div>
+
+    {% if book.description %}<p style="max-width:62ch">{{ book.description }}</p>{% endif %}
+
+    <div class="borrow-box">
+      <div class="flex between items-center wrap gap-2">
+        <div style="min-width:220px;flex:1">{{ meter(book) }}</div>
+        <div>
+          {% if not current_user.is_authenticated %}
+            <a class="btn btn-primary btn-lg" href="{{ url_for('auth.login', next=request.path) }}">Đăng nhập để mượn {{ icon('arrow') }}</a>
+          {% elif current_user.is_admin %}
+            <a class="btn btn-ghost btn-lg" href="{{ url_for('admin.book_edit', book_id=book.id) }}">{{ icon('edit') }} Chỉnh sửa sách</a>
+          {% else %}
+            <div class="flex gap-1 wrap">
+              <form method="post" action="{{ url_for('main.cart_add', book_id=book.id) }}">{{ csrf() }}
+                <button class="btn btn-ghost btn-lg" {{ 'disabled' if book.available_copies < 1 }}>{{ icon('cart') }} Thêm giỏ</button>
+              </form>
+              <form method="post" action="{{ url_for('main.borrow', book_id=book.id) }}">{{ csrf() }}
+                <button class="btn btn-primary btn-lg" {{ 'disabled' if book.available_copies < 1 }}>{{ icon('book') }} Mượn ngay</button>
+              </form>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+      <div class="rules">
+        <div>{{ icon('clock') }}<span>Mượn tối đa <b>{{ config.LOAN_DAYS }} ngày</b></span></div>
+        <div>{{ icon('refresh') }}<span>Gia hạn <b>{{ config.MAX_RENEWALS }} lần</b> (+{{ config.RENEW_DAYS }} ngày)</span></div>
+        <div>{{ icon('alert') }}<span>Trả muộn phạt <b>{{ '{:,}'.format(config.FINE_PER_DAY).replace(',', '.') }} đ/ngày</b></span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if book.category_id %}
+<section class="mt-4" style="margin-top:64px">
+  <div class="section-head"><div><span class="eyebrow">Gợi ý</span><h2 class="mt-1">Sách cùng thể loại</h2></div></div>
+  <div class="book-grid" data-related data-category="{{ book.category_id }}" data-exclude="{{ book.id }}" data-tone="{{ book.category_id % 6 }}"></div>
+</section>
+{% endif %}
+{% endblock %}

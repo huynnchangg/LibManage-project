@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% from "macros.html" import icon %}
+{% block title %}Phiếu mượn {{ slip.code }}{% endblock %}
+{% block content %}
+<div class="page-head no-print" data-reveal>
+  <div>
+    <span class="eyebrow">
+      <a href="{{ url_for('main.my_loans') }}">{{ icon('loans') }} Sách của tôi</a> /
+    </span>
+    <h1 class="mt-1">Phiếu mượn: {{ slip.code }}</h1>
+  </div>
+  <div class="flex gap-2">
+    <button type="button" class="btn btn-primary" onclick="window.print()">
+      {{ icon('check') }} In phiếu mượn
+    </button>
+    <a class="btn btn-ghost" href="{{ url_for('main.my_loans') }}">Quay lại</a>
+  </div>
+</div>
+
+<div class="card card-pad" data-reveal style="max-width:880px;margin:0 auto">
+  {# Header phiếu in #}
+  <div class="flex between items-center wrap gap-2 pb-3 mb-3" style="border-bottom:2px dashed var(--line)">
+    <div>
+      <div style="font-weight:800;font-size:1.15rem;letter-spacing:-.02em">TRƯỜNG ĐẠI HỌC KINH TẾ QUỐC DÂN</div>
+      <div class="muted small font-semibold">THƯ VIỆN TRUNG TÂM — PHÒNG PHỤC VỤ BẠN ĐỌC</div>
+    </div>
+    <div class="text-right">
+      <span class="eyebrow">MÃ PHIẾU MƯỢN</span>
+      <h2 style="font-family:monospace;letter-spacing:1px;margin:2px 0">{{ slip.code }}</h2>
+      <span class="badge badge-primary">{{ 'Đăng ký online' if slip.slip_type == 'online' else 'Mượn trực tiếp tại quầy' }}</span>
+    </div>
+  </div>
+
+  {# Thông tin người mượn #}
+  <div class="meta-grid mb-3" style="grid-template-columns:repeat(auto-fit, minmax(200px, 1fr))">
+    <div class="meta"><span>Độc giả</span><b>{{ slip.user.full_name }}</b></div>
+    <div class="meta"><span>Mã sinh viên</span><b>{{ slip.user.student_code or '—' }}</b></div>
+    <div class="meta"><span>Ngày lập</span><b>{{ slip.created_at|dt('%d/%m/%Y %H:%M') }}</b></div>
+    <div class="meta"><span>Trạng thái</span><b>{{ slip.status_label[0] }}</b></div>
+  </div>
+
+  {# Bảng danh sách sách #}
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th style="width:45px">#</th>
+          <th>Tác phẩm &amp; Tác giả</th>
+          <th>Mã vạch (Barcode)</th>
+          <th>Vị trí kệ</th>
+          <th>Hạn trả</th>
+          <th>Trạng thái</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for item in slip.items %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>
+          <b>{{ item.book.title }}</b>
+          <div class="small muted">{{ item.book.author }}</div>
+        </td>
+        <td>
+          {% if item.copy %}
+            <span class="badge badge-primary badge-plain" style="font-family:monospace">{{ item.copy.barcode }}</span>
+          {% else %}
+            <span class="muted small">— Tự động gán —</span>
+          {% endif %}
+        </td>
+        <td>{{ item.book.location or 'Kho tổng hợp' }}</td>
+        <td>{{ item.due_date.strftime('%d/%m/%Y') if item.due_date else '—' }}</td>
+        <td>
+          {% set l_lbl, l_tone = item.status_label %}
+          <span class="badge badge-{{ l_tone }}">{{ l_lbl }}</span>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if slip.note %}
+  <div class="card mt-3" style="background:var(--primary-soft);padding:14px;border-radius:var(--radius-sm)">
+    <b>Ghi chú:</b> {{ slip.note }}
+  </div>
+  {% endif %}
+
+  {# Quy định & Chữ ký #}
+  <div class="mt-4 pt-3 flex between wrap gap-3" style="border-top:1px solid var(--line)">
+    <div class="muted small" style="max-width:420px;line-height:1.6">
+      <b>LƯU Ý:</b> Bạn đọc bảo quản tài liệu nguyên vẹn, không viết vẽ hoặc làm rách sách. Hoàn trả đúng hạn 14 ngày. Phạt trả muộn 5.000 đ/ngày.
+    </div>
+
+    <div class="flex gap-4 text-center">
+      <div>
+        <div class="small muted">NGƯỜI NHẬN SÁCH</div>
+        <div class="mt-4"><b>{{ slip.user.full_name }}</b></div>
+      </div>
+      <div>
+        <div class="small muted">THỦ THƯ PHỤC VỤ</div>
+        <div class="mt-4"><b>{{ slip.processor.full_name if slip.processor else 'Thủ thư quầy' }}</b></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+

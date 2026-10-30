@@ -1,0 +1,63 @@
+{% extends "admin/_layout.html" %}
+{% from "macros.html" import csrf, icon, pager, empty %}
+{% block title %}Tiền phạt{% endblock %}
+{% block admin_content %}
+<div class="page-head" data-reveal><div><span class="eyebrow">{{ icon('coins') }} Tài chính</span><h1 class="mt-1">Quản lý tiền phạt</h1></div></div>
+
+<div class="tabs" data-reveal>
+  {% for k, label in [('all', 'Tất cả'), ('unpaid', 'Chưa thu'), ('paid', 'Đã thu')] %}
+  <a class="tab {{ 'active' if paid_filter == k }}" href="{{ url_for('admin.fines', paid=k, q=q or None) }}">{{ label }}</a>
+  {% endfor %}
+</div>
+
+<form class="toolbar" method="get" data-reveal>
+  <input type="hidden" name="paid" value="{{ paid_filter }}">
+  <input name="q" value="{{ q or '' }}" class="input" style="max-width:380px" placeholder="Tìm theo tên độc giả, mã SV, tựa sách...">
+  <button class="btn btn-ghost">{{ icon('search') }} Tìm</button>
+  {% if q %}
+  <a class="btn btn-ghost" href="{{ url_for('admin.fines', paid=paid_filter) }}">{{ icon('x') }} Đặt lại</a>
+  {% endif %}
+</form>
+
+{% if loans %}
+<div class="table-wrap card" data-reveal><table class="table">
+  <thead><tr><th>Độc giả</th><th>Tài liệu</th><th>Ngày trả</th><th>Số tiền</th><th>Trạng thái</th><th class="text-right">Thao tác</th></tr></thead>
+  <tbody>
+  {% for l in loans %}
+  <tr>
+    <td>
+      <b>{{ l.user.full_name }}</b>
+      <div class="small muted">{{ l.user.student_code or l.user.username }}</div>
+    </td>
+    <td>
+      <b>{{ l.book.title }}</b>
+      {% if l.copy %}<div class="small muted">Mã: {{ l.copy.barcode }}</div>{% endif %}
+    </td>
+    <td>{{ l.returned_at|dt }}</td>
+    <td><b>{{ l.fine_amount|vnd }}</b></td>
+    <td>
+      {% if l.fine_paid %}
+      <span class="badge badge-success">Đã thu</span>
+      {% else %}
+      <span class="badge badge-danger">Chưa thu</span>
+      {% endif %}
+    </td>
+    <td class="text-right">
+      <div class="row-actions">
+        {% if not l.fine_paid %}
+        <form method="post" action="{{ url_for('admin.fine_pay', loan_id=l.id) }}" data-confirm="Xác nhận đã thu {{ l.fine_amount|vnd }} của {{ l.user.full_name }}?">
+          {{ csrf() }}
+          <button class="btn btn-success btn-sm">{{ icon('check') }} Thu tiền</button>
+        </form>
+        {% endif %}
+      </div>
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{{ pager(pagination, 'admin.fines', {'paid': paid_filter, 'q': q or None}) }}
+{% else %}
+<div class="card">{{ empty('🎉', 'Không có khoản phạt nào', 'Chưa có khoản phạt phù hợp với bộ lọc hiện tại.') }}</div>
+{% endif %}
+{% endblock %}

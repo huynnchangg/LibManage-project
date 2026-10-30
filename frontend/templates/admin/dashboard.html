@@ -1,0 +1,61 @@
+{% extends "admin/_layout.html" %}
+{% from "macros.html" import icon %}
+{% block title %}Tổng quan{% endblock %}
+{% block admin_content %}
+{% set total_c = s.total_copies or 1 %}
+{% set avail = s.available_copies if s.available_copies is defined else (s.total_copies - s.borrowing) %}
+{% set pct_avail = ((avail / total_c * 100)|round(1)) if total_c else 100 %}
+{% set pct_borrow = ((s.borrowing / total_c * 100)|round(1)) if total_c else 0 %}
+<div class="page-head" data-reveal><div><span class="eyebrow">{{ icon('chart') }} Dashboard</span><h1 class="mt-1">Tổng quan hoạt động</h1></div></div>
+
+<div class="stat-grid" data-stagger>
+  {% for label, val, tone, ico, link in [
+    ('Đầu sách', s.total_titles, 'primary', 'book', url_for('admin.books')),
+    ('Độc giả', s.readers, 'success', 'users', url_for('admin.users')),
+    ('Chờ duyệt', s.pending, 'warning', 'clock', url_for('admin.loans', status='pending')),
+    ('Đang mượn', s.borrowing, 'primary', 'loans', url_for('admin.loans', status='borrowing')),
+    ('Quá hạn', s.overdue, 'danger', 'alert', url_for('admin.loans', status='overdue')),
+  ] %}
+  <a class="card stat-card" href="{{ link }}" data-reveal>
+    <div class="sum-ico tone-{{ tone }}">{{ icon(ico) }}</div>
+    <b data-count="{{ val }}">{{ val }}</b><span>{{ label }}</span>
+  </a>
+  {% endfor %}
+</div>
+
+<a class="alert alert-warning" href="{{ url_for('admin.fines') }}" data-reveal style="color:var(--warn)">
+  {{ icon('coins') }}<div>Tiền phạt chưa thu: <b>{{ s.unpaid|vnd }}</b> — bấm để xem chi tiết và thu tiền.</div>
+</a>
+
+<div class="panels" data-stagger>
+  <div class="card panel" data-reveal>
+    <h3>Tình trạng kho sách</h3>
+    <div class="donut-wrap">
+      <div class="donut" data-p="{{ pct_avail }}">
+        <div style="text-align:center">
+          <b style="display:block;line-height:1">{{ pct_avail }}%</b>
+          <span style="font-size:0.75rem;color:var(--muted);font-weight:600">Sẵn sàng</span>
+        </div>
+      </div>
+      <div class="legend">
+        <div><i style="background:var(--primary)"></i>Sẵn trong kho: <b>{{ avail }}</b> <small class="muted">({{ pct_avail }}%)</small></div>
+        <div><i style="background:var(--line)"></i>Đang cho mượn: <b>{{ s.borrowing }}</b> <small class="muted">({{ pct_borrow }}%)</small></div>
+        <div class="muted">Tổng cộng: {{ total_c }} bản</div>
+      </div>
+    </div>
+  </div>
+
+  {% macro bars(rows, title) %}
+  <div class="card panel" data-reveal>
+    <h3>{{ title }}</h3>
+    {% set mx = (rows|map(attribute=1)|max) if rows else 1 %}
+    {% for name, n in rows %}
+    <div class="bar-row"><div class="top"><span>{{ name }}</span><b>{{ n }}</b></div><div class="bar"><i style="width:{{ (n / mx * 100)|round|int }}%"></i></div></div>
+    {% else %}<p class="muted">Chưa có dữ liệu.</p>{% endfor %}
+  </div>
+  {% endmacro %}
+  {{ bars(s.top_books, 'Sách mượn nhiều nhất') }}
+  {{ bars(s.by_category, 'Lượt mượn theo thể loại') }}
+  {{ bars(s.top_readers, 'Độc giả tích cực') }}
+</div>
+{% endblock %}

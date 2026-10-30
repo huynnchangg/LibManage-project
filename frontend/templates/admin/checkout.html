@@ -1,0 +1,73 @@
+{% extends "admin/_layout.html" %}
+{% from "macros.html" import csrf, icon %}
+{% block title %}Cho mượn trực tiếp tại quầy{% endblock %}
+{% block admin_content %}
+<div class="page-head" data-reveal>
+  <div>
+    <span class="eyebrow">{{ icon('plus') }} Quầy lưu thông</span>
+    <h1 class="mt-1">Cho mượn trực tiếp tại quầy</h1>
+    <p class="muted">Xuất phiếu mượn và giao sách trực tiếp khi độc giả đến bàn thủ thư.</p>
+  </div>
+  <a class="btn btn-ghost" href="{{ url_for('admin.loans') }}">{{ icon('loans') }} Về danh sách mượn</a>
+</div>
+
+<div class="flex gap-3 wrap" data-reveal>
+  <div class="card card-pad" style="flex:1;min-width:320px">
+    <h3 class="mb-3">Lập phiếu mượn tại quầy</h3>
+
+    <form method="post" action="{{ url_for('admin.loan_checkout') }}">
+      {{ csrf() }}
+
+      <div class="field">
+        <label for="student_query">Mã sinh viên hoặc Tên đăng nhập *</label>
+        <input id="student_query" name="student_query" class="input" required
+               placeholder="Ví dụ: 11210001 hoặc reader01" value="{{ student_query or '' }}" autocomplete="off" autofocus>
+        <small class="muted">Hệ thống sẽ tự động kiểm tra nợ phạt, sách quá hạn và giới hạn 5 cuốn.</small>
+      </div>
+
+      <div class="field mt-3">
+        <label for="barcodes">Mã vạch các cuốn sách mượn (Barcode) *</label>
+        <textarea id="barcodes" name="barcodes" rows="4" class="textarea" style="font-family:monospace" required
+                  placeholder="Nhập hoặc quét mã vạch (mỗi mã 1 dòng hoặc cách bởi dấu phẩy, ví dụ:&#10;BC000101&#10;BC000201)">{{ barcodes_text or '' }}</textarea>
+        <small class="muted">Mỗi mã vạch tương ứng với một bản sao sách vật lý có sẵn trong kho.</small>
+      </div>
+
+      <div class="field mt-3">
+        <label for="note">Ghi chú phiếu mượn (nếu có)</label>
+        <input id="note" name="note" class="input" placeholder="Ví dụ: Mượn làm nghiên cứu khoa học..." value="{{ note or '' }}">
+      </div>
+
+      <div class="alert alert-warning mt-3 flex items-center gap-2">
+        {{ icon('clock') }}
+        <div>Thời hạn mượn tính từ hôm nay: <b>{{ config.LOAN_DAYS }} ngày</b>. Gia hạn tối đa {{ config.MAX_RENEWALS }} lần.</div>
+      </div>
+
+      <div class="mt-4 flex gap-2">
+        <button type="submit" class="btn btn-primary btn-lg" style="flex:1">
+          {{ icon('check') }} Lập phiếu &amp; Giao sách ngay
+        </button>
+        <a class="btn btn-ghost" href="{{ url_for('admin.loans') }}">Huỷ</a>
+      </div>
+    </form>
+  </div>
+
+  <div style="width:340px">
+    <div class="card card-pad mb-3" style="background:var(--primary-soft)">
+      <h3 class="mb-2 flex items-center gap-1">{{ icon('shield') }} Quy định tại quầy</h3>
+      <ul class="muted small" style="line-height:1.7;padding-left:1.2rem">
+        <li>Tài khoản độc giả phải đang hoạt động.</li>
+        <li>Không còn nợ phạt chưa thanh toán.</li>
+        <li>Không có sách đang bị quá hạn.</li>
+        <li>Tổng sách mượn không quá <b>{{ config.MAX_ACTIVE_LOANS }} cuốn</b>.</li>
+        <li>Mã vạch sách phải ở trạng thái <b>Sẵn sàng</b>.</li>
+      </ul>
+    </div>
+
+    <div class="card card-pad">
+      <h3 class="mb-2 flex items-center gap-1">{{ icon('barcode') }} Máy quét mã vạch</h3>
+      <p class="small muted">Nếu quầy có máy quét barcode, thủ thư chỉ cần đặt con trỏ vào ô mã vạch và bấm quét từng cuốn sách.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+

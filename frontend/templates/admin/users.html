@@ -1,0 +1,64 @@
+{% extends "admin/_layout.html" %}
+{% from "macros.html" import csrf, icon, empty %}
+{% block title %}Độc giả{% endblock %}
+{% block admin_content %}
+<div class="page-head" data-reveal>
+  <div><span class="eyebrow">{{ icon('users') }} Tài khoản</span><h1 class="mt-1">Quản lý độc giả</h1></div>
+  <a class="btn btn-primary" href="{{ url_for('admin.user_new') }}">{{ icon('plus') }} Thêm độc giả</a>
+</div>
+
+<form class="toolbar" method="get" data-reveal>
+  <input name="q" value="{{ request.args.q or '' }}" class="input" style="max-width:380px" placeholder="Tên, tài khoản, mã SV...">
+  <button class="btn btn-ghost">{{ icon('search') }} Tìm</button>
+  {% if request.args.q %}
+  <a class="btn btn-ghost" href="{{ url_for('admin.users') }}">{{ icon('x') }} Đặt lại</a>
+  {% endif %}
+</form>
+
+{% if users %}
+<div class="table-wrap card" data-reveal><table class="table">
+  <thead><tr><th>Độc giả</th><th>Mã SV</th><th>Email</th><th>Đang mượn</th><th>Trạng thái</th><th class="text-right">Thao tác</th></tr></thead>
+  <tbody>
+  {% for u in users %}
+  <tr>
+    <td>
+      <div class="flex items-center gap-2">
+        <span class="avatar">{{ u.full_name[:1]|upper }}</span>
+        <div>
+          <a href="{{ url_for('admin.user_detail', user_id=u.id) }}"><b>{{ u.full_name }}</b></a>
+          <div class="small muted">@{{ u.username }}</div>
+        </div>
+      </div>
+    </td>
+    <td>{{ u.student_code or '—' }}</td>
+    <td>{{ u.email }}</td>
+    <td>
+      <span class="badge badge-primary badge-plain">
+        {{ u.loans|selectattr('status','equalto','borrowing')|list|length }} cuốn
+      </span>
+    </td>
+    <td>
+      {% if u.active %}
+      <span class="badge badge-success">Hoạt động</span>
+      {% else %}
+      <span class="badge badge-secondary">Bị khoá</span>
+      {% endif %}
+    </td>
+    <td class="text-right">
+      <div class="row-actions">
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('admin.user_detail', user_id=u.id) }}" title="Chi tiết hồ sơ">{{ icon('user') }} Hồ sơ</a>
+        <form method="post" action="{{ url_for('admin.user_toggle', user_id=u.id) }}"
+            {% if u.active %}data-confirm="Khoá tài khoản {{ u.username }}? Người này sẽ không đăng nhập được."{% endif %}>
+          {{ csrf() }}
+          <button class="btn btn-sm {{ 'btn-danger' if u.active else 'btn-success' }}">
+            {{ 'Khoá' if u.active else 'Mở khoá' }}
+          </button>
+        </form>
+      </div>
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% else %}<div class="card">{{ empty('👥', 'Chưa có độc giả phù hợp') }}</div>{% endif %}
+{% endblock %}

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% from "macros.html" import csrf, icon, cover, empty %}
+{% block title %}Giỏ mượn sách{% endblock %}
+{% block content %}
+<div class="page-head" data-reveal>
+  <div>
+    <span class="eyebrow">{{ icon('cart') }} Danh sách đăng ký</span>
+    <h1 class="mt-1">Giỏ mượn sách</h1>
+  </div>
+  <a class="btn btn-ghost" href="{{ url_for('main.index') }}">{{ icon('search') }} Tìm thêm sách</a>
+</div>
+
+{% set cart_list = items if items is defined else cart_items %}
+{% if cart_list %}
+<div class="card card-pad" data-reveal>
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Tài liệu</th>
+          <th>Vị trí kệ</th>
+          <th>Tình trạng kho</th>
+          <th>Giá bìa</th>
+          <th class="text-right">Thao tác</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in cart_list %}
+        {% set b = item.book %}
+        <tr>
+          <td>
+            <div class="flex items-center gap-2">
+              <div style="width:48px">{{ cover(b) }}</div>
+              <div>
+                <a href="{{ url_for('main.book_detail', book_id=b.id) }}"><b>{{ b.title }}</b></a>
+                <div class="small muted">{{ b.author }}{% if b.year %} · {{ b.year }}{% endif %}</div>
+              </div>
+            </div>
+          </td>
+          <td>{{ b.location or 'Kệ đang xếp' }}</td>
+          <td>
+            <span class="badge badge-{{ 'success' if b.available_copies > 0 else 'danger' }}">
+              {{ 'Còn ' ~ b.available_copies ~ '/' ~ b.total_copies ~ ' bản' if b.available_copies > 0 else 'Tạm hết' }}
+            </span>
+          </td>
+          <td>{{ b.price|vnd }}</td>
+          <td class="text-right">
+            <form method="post" action="{{ url_for('main.cart_remove', book_id=b.id) }}">
+              {{ csrf() }}
+              <button class="btn btn-danger btn-sm" title="Xoá khỏi giỏ">{{ icon('trash') }} Xoá</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="flex between items-center wrap gap-2 mt-4 pt-3" style="border-top:1px solid var(--line)">
+    <form method="post" action="{{ url_for('main.cart_clear') }}" data-confirm="Bạn chắc chắn muốn dọn sạch tất cả sách trong giỏ?">
+      {{ csrf() }}
+      <button class="btn btn-ghost btn-sm">{{ icon('trash') }} Xoá toàn bộ</button>
+    </form>
+
+    <form method="post" action="{{ url_for('main.cart_checkout') }}" class="flex gap-2 items-center wrap" style="flex:1;justify-content:flex-end">
+      {{ csrf() }}
+      <input name="note" class="input" style="max-width:320px" placeholder="Ghi chú thêm (vd: lấy sáng mai...)">
+      <button class="btn btn-primary btn-lg">{{ icon('check') }} Gửi phiếu mượn ({{ cart_list|length }} cuốn)</button>
+    </form>
+  </div>
+</div>
+{% else %}
+<div class="card" data-reveal>
+  {{ empty('🛒', 'Giỏ mượn sách đang trống', 'Hãy khám phá kho sách và thêm những cuốn bạn muốn mượn vào danh sách.') }}
+  <div class="center" style="padding-bottom:36px">
+    <a class="btn btn-primary" href="{{ url_for('main.index') }}">{{ icon('search') }} Khám phá kho sách</a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

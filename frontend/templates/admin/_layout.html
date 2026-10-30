@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% from "macros.html" import icon %}
+{% block content %}
+{% set ep = request.endpoint %}
+<div class="admin-shell">
+  <aside class="card sidebar" data-reveal="left">
+    <div class="side-title">Quản trị thư viện</div>
+    <a class="side-link {{ 'active' if ep == 'admin.dashboard' }}" href="{{ url_for('admin.dashboard') }}">{{ icon('chart') }} Tổng quan</a>
+    <a class="side-link {{ 'active' if ep in ('admin.loans', 'admin.slip_detail') }}" href="{{ url_for('admin.loans') }}">{{ icon('loans') }} Mượn trả</a>
+    <a class="side-link {{ 'active' if ep == 'admin.loan_checkout' }}" href="{{ url_for('admin.loan_checkout') }}">{{ icon('plus') }} Mượn tại quầy</a>
+    <a class="side-link {{ 'active' if ep in ('admin.books','admin.book_new','admin.book_edit','admin.book_copies') }}" href="{{ url_for('admin.books') }}">{{ icon('book') }} Quản lý sách</a>
+    <a class="side-link {{ 'active' if ep == 'admin.categories' }}" href="{{ url_for('admin.categories') }}">{{ icon('layers') }} Thể loại</a>
+    <a class="side-link {{ 'active' if ep in ('admin.users','admin.user_new','admin.user_detail') }}" href="{{ url_for('admin.users') }}">{{ icon('users') }} Độc giả</a>
+    <a class="side-link {{ 'active' if ep == 'admin.fines' }}" href="{{ url_for('admin.fines') }}">{{ icon('coins') }} Tiền phạt</a>
+  </aside>
+  <section>{% block admin_content %}{% endblock %}</section>
+</div>
+{% endblock %}
