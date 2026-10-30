@@ -1,9 +1,0 @@
-{% extends "base.html" %}
-{% block title %}Lỗi {{ code }}{% endblock %}
-{% block content %}
-<div class="center" style="padding:60px 0">
-  <h1 class="gradient-text" style="font-size:clamp(5rem,16vw,10rem);line-height:1">{{ code }}</h1>
-  <p class="muted mt-2" style="font-size:1.15rem">{{ msg }}</p>
-  <a class="btn btn-primary btn-lg mt-3" href="{{ url_for('main.index') }}">Về trang chủ</a>
-</div>
-{% endblock %}
