@@ -37,6 +37,8 @@ def index():
 @bp.route("/books/<int:book_id>")
 def book_detail(book_id):
     book = Book.query.get_or_404(book_id)
+    if not book.is_active:
+        abort(404)
     return render_template("book_detail.html", book=book)
 
 
@@ -50,6 +52,8 @@ def borrow(book_id):
     if current_user.is_admin:
         abort(403)
     book = Book.query.get_or_404(book_id)
+    if not book.is_active:
+        abort(404)
     try:
         loan = loan_service.request_loan(current_user, book)
         flash(f"Đã tạo phiếu mượn #{loan.slip.code if loan.slip else loan.id} cho cuốn “{book.title}”. Vui lòng chờ thủ thư xét duyệt.", "success")
@@ -73,6 +77,8 @@ def cart_add(book_id):
     if current_user.is_admin:
         abort(403)
     book = Book.query.get_or_404(book_id)
+    if not book.is_active:
+        abort(404)
     try:
         loan_service.add_to_cart(current_user, book)
         flash(f"Đã thêm cuốn “{book.title}” vào danh sách giỏ mượn.", "success")
@@ -123,6 +129,8 @@ def cart_checkout():
 @bp.route("/my/loans")
 @login_required
 def my_loans():
+    # Tự động hủy các phiếu quá hạn 48h để giải phóng quota và trả sách về kho
+    loan_service.cancel_expired_pickups()
     loans = Loan.query.filter_by(user_id=current_user.id).order_by(Loan.requested_at.desc()).all()
     slips = LoanSlip.query.filter_by(user_id=current_user.id).order_by(LoanSlip.created_at.desc()).all()
     return render_template(

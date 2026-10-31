@@ -9,7 +9,7 @@ if sys.platform.startswith("win"):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from app import create_app
 from app.config import Config
 from app.extensions import db
@@ -18,7 +18,7 @@ from app.models import (
     Loan, LoanSlip, User,
     LOAN_BORROWING, LOAN_PENDING, LOAN_READY,
     LOAN_RETURNED, LOAN_CANCELLED,
-    COPY_AVAILABLE, COPY_BORROWED, COPY_RESERVED
+    COPY_AVAILABLE, COPY_BORROWED, COPY_DAMAGED, COPY_RESERVED
 )
 from app.services import loan_service
 from app.services.loan_service import LoanError
@@ -315,7 +315,7 @@ with app.app_context():
     assert dmg_payment is not None
     assert dmg_payment.amount == 60000
 
-print("--- 10. Kiểm tra sửa thể loại, thêm sách, đổi mật khẩu độc giả ---")
+print("--- 10. Kiểm tra sửa thể loại, thêm sách, đổi mật khẩu độc giả an toàn ---")
 ok(cl.post("/admin/categories/1/edit", data={"name": "Công nghệ thông tin"}, follow_redirects=True), "cập nhật")
 with app.app_context():
     assert db.session.get(Category, 1).name == "Công nghệ thông tin"
@@ -327,10 +327,152 @@ with app.app_context():
     assert len(b_new.copies) == 3
     assert b_new.price == 95000
 
-ok(cl.post("/admin/users/2/reset-password", data={"new_password": "reset123456"}, follow_redirects=True), "đặt lại mật khẩu")
+# Thử đặt mật khẩu ngắn < 6 ký tự -> bị từ chối
+ok(cl.post("/admin/users/2/reset-password", data={"new_password": "123"}, follow_redirects=True), "tối thiểu 6 ký tự")
+
+# Đặt mật khẩu hợp lệ >= 6 ký tự -> thành công và không in plain text
+res_reset = cl.post("/admin/users/2/reset-password", data={"new_password": "reset123456"}, follow_redirects=True)
+ok(res_reset, "thành công")
+assert "reset123456" not in res_reset.get_data(as_text=True), "Lỗi bảo mật: in mật khẩu cleartext ra thông báo!"
+
 cl.post("/logout")
 ok(login("r1", "reset123456"))
+cl.post("/logout")
+
+print("--- 11. Kiểm tra tự động hủy phiếu 'Chờ lấy sách' quá 48h & chặn giao sách ---")
+ok(login("admin", "admin123"))
+with app.app_context():
+    # Giả lập 1 lượt mượn READY_FOR_PICKUP đã quá 48h
+    b_test = db.session.get(Book, 1)
+    b_test.available_copies = 0
+    cp_test = db.session.get(BookCopy, 1)
+    cp_test.status = COPY_RESERVED
+    db.session.flush()
+
+    slip_exp = LoanSlip(
+        code="TEST-EXP-001",
+        user_id=2,
+        slip_type="online",
+        status=LOAN_READY,
+        pickup_deadline=datetime.now() - timedelta(hours=5)
+    )
+    db.session.add(slip_exp)
+    db.session.flush()
+
+    loan_exp = Loan(
+        slip_id=slip_exp.id,
+        user_id=2,
+        book_id=b_test.id,
+        copy_id=cp_test.id,
+        status=LOAN_READY,
+        pickup_deadline=datetime.now() - timedelta(hours=5)
+    )
+    db.session.add(loan_exp)
+    db.session.commit()
+    loan_exp_id = loan_exp.id
+
+# Thử handover lượt mượn quá hạn -> bị chặn và tự động hủy
+res_ho = cl.post(f"/admin/loans/{loan_exp_id}/handover", follow_redirects=True)
+with app.app_context():
+    l_check = db.session.get(Loan, loan_exp_id)
+    assert l_check.status == LOAN_CANCELLED, "Lượt mượn quá hạn 48h chưa được hủy!"
+    cp_check = db.session.get(BookCopy, 1)
+    assert cp_check.status == COPY_AVAILABLE, "Bản sao chưa được trả về available!"
+    b_check = db.session.get(Book, 1)
+    assert b_check.available_copies == 1, "Tồn kho sách chưa được hoàn lại!"
+    s_check = db.session.get(LoanSlip, l_check.slip_id)
+    assert s_check.status == LOAN_CANCELLED, "Trạng thái phiếu mượn chưa được đồng bộ!"
+print("Mục 11: Phiếu quá 48h đã tự động hủy, hoàn trả bản sao và cộng lại tồn kho.")
+
+print("--- 12. Kiểm tra phiếu nhiều cuốn không bị đóng nhầm (Slip Status Sync) ---")
+with app.app_context():
+    slip_multi = LoanSlip(code="TEST-MULTI-001", user_id=2, slip_type="online", status=LOAN_BORROWING)
+    db.session.add(slip_multi)
+    db.session.flush()
+
+    # Cuốn 1 đang mượn, Cuốn 2 đang chờ duyệt
+    item1 = Loan(slip_id=slip_multi.id, user_id=2, book_id=1, status=LOAN_BORROWING, due_date=date.today()+timedelta(days=10))
+    item2 = Loan(slip_id=slip_multi.id, user_id=2, book_id=2, status=LOAN_PENDING)
+    db.session.add_all([item1, item2])
+    db.session.commit()
+    item1_id = item1.id
+    item2_id = item2.id
+    slip_multi_id = slip_multi.id
+
+# Trả cuốn 1
+cl.post(f"/admin/loans/{item1_id}/return", data={"condition": "normal", "damage_percent": 0, "pay_now": "0"}, follow_redirects=True)
+with app.app_context():
+    s_m = db.session.get(LoanSlip, slip_multi_id)
+    assert s_m.status == LOAN_PENDING, f"Lỗi đóng nhầm phiếu: cuốn 2 còn pending mà phiếu bị đổi thành {s_m.status}!"
+print("Mục 12: Phiếu nhiều cuốn giữ đúng trạng thái khi trả từng phần.")
+
+print("--- 13. Kiểm tra sách ẩn (is_active=False) chặn truy cập và mượn ---")
+with app.app_context():
+    b_hide = Book.query.filter_by(title="Hệ điều hành").first()
+    b_hide.is_active = False
+    db.session.commit()
+    b_hide_id = b_hide.id
+
+# Truy cập /books/<id> và API /api/v1/books/<id> phải trả về 404
+assert cl.get(f"/books/{b_hide_id}").status_code == 404
+assert cl.get(f"/api/v1/books/{b_hide_id}").status_code == 404
+
+# Thử mượn 1-click hoặc thêm giỏ phải trả về 404
+cl.post("/logout")
+ok(login("r1", "reset123456"))
+assert cl.post(f"/books/{b_hide_id}/borrow").status_code == 404
+assert cl.post(f"/cart/add/{b_hide_id}").status_code == 404
+cl.post("/logout")
+print("Mục 13: Sách ẩn (is_active=False) đã bị chặn 404 toàn diện.")
+
+print("--- 14. Bắt lỗi nhập % hư hại (chống crash 500) ---")
+ok(login("admin", "admin123"))
+# Tạo 1 lượt mượn để thử trả sách
+with app.app_context():
+    slip_ret = LoanSlip(code="TEST-RET-001", user_id=2, slip_type="direct", status=LOAN_BORROWING)
+    db.session.add(slip_ret)
+    db.session.flush()
+    loan_ret = Loan(slip_id=slip_ret.id, user_id=2, book_id=1, status=LOAN_BORROWING, due_date=date.today()+timedelta(days=5))
+    db.session.add(loan_ret)
+    db.session.commit()
+    loan_ret_id = loan_ret.id
+
+# Nhập chữ "abc" vào damage_percent -> không crash 500
+resp_err1 = cl.post(f"/admin/loans/{loan_ret_id}/return", data={"condition": "damaged", "damage_percent": "abc"}, follow_redirects=True)
+assert resp_err1.status_code == 200
+assert "0 đến 100" in resp_err1.get_data(as_text=True)
+
+# Nhập -20 hoặc 150 -> không crash 500, báo lỗi
+resp_err2 = cl.post(f"/admin/loans/{loan_ret_id}/return", data={"condition": "damaged", "damage_percent": "150"}, follow_redirects=True)
+assert resp_err2.status_code == 200
+assert "0% đến 100%" in resp_err2.get_data(as_text=True)
+print("Mục 14: Nhập chữ hoặc % hư hại sai quy cách đã được xử lý an toàn.")
+
+print("--- 15. Kiểm tra sửa trạng thái bản sao (BookCopy) & đồng bộ tồn kho ---")
+with app.app_context():
+    cp_upd = BookCopy.query.filter_by(barcode="BC000101").first()
+    b_parent = cp_upd.book
+    init_avail = b_parent.available_copies
+    cp_upd_id = cp_upd.id
+    b_parent_id = b_parent.id
+
+# Đổi bản sao sang "damaged" -> available_copies giảm 1
+ok(cl.post(f"/admin/books/{b_parent_id}/copies/{cp_upd_id}/edit", data={"status": "damaged", "condition": "Rách bìa"}, follow_redirects=True), "cập nhật trạng thái")
+with app.app_context():
+    cp_check = db.session.get(BookCopy, cp_upd_id)
+    assert cp_check.status == "damaged"
+    b_check = db.session.get(Book, b_parent_id)
+    assert b_check.available_copies == init_avail - 1, "Tồn kho không giảm khi bản sao hỏng!"
+
+# Phục hồi bản sao về "available" -> available_copies tăng lại
+ok(cl.post(f"/admin/books/{b_parent_id}/copies/{cp_upd_id}/edit", data={"status": "available", "condition": "Đã sửa xong"}, follow_redirects=True), "cập nhật trạng thái")
+with app.app_context():
+    cp_check = db.session.get(BookCopy, cp_upd_id)
+    assert cp_check.status == "available"
+    b_check = db.session.get(Book, b_parent_id)
+    assert b_check.available_copies == init_avail, "Tồn kho không hồi phục khi bản sao sẵn sàng!"
+print("Mục 15: Chức năng sửa trạng thái bản sao hoạt động chuẩn xác và đồng bộ tồn kho.")
 
 print("\n" + "="*50)
-print("✅ TẤT CẢ KIỂM THỬ ĐẠT 100%!")
+print("✅ TẤT CẢ 15 PHÂN HỆ KIỂM THỬ ĐẠT 100%!")
 print("="*50)

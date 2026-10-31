@@ -22,7 +22,10 @@ def list_books():
 
 @bp.route("/books/<int:book_id>")
 def get_book(book_id):
-    return jsonify(Book.query.get_or_404(book_id).to_dict())
+    book = Book.query.get_or_404(book_id)
+    if not book.is_active:
+        abort(404)
+    return jsonify(book.to_dict())
 
 
 @bp.route("/stats")

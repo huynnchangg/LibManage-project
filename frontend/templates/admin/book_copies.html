@@ -1,5 +1,5 @@
 {% extends "admin/_layout.html" %}
-{% from "macros.html" import icon %}
+{% from "macros.html" import icon, csrf %}
 {% block title %}Bản sao: {{ book.title }}{% endblock %}
 {% block admin_content %}
 <div class="page-head" data-reveal>
@@ -8,7 +8,7 @@
       <a href="{{ url_for('admin.books') }}">{{ icon('book') }} Quản lý sách</a> /
     </span>
     <h1 class="mt-1">Bản sao sách (BookCopy)</h1>
-    <p class="muted mt-1">Đầu sách: <b>{{ book.title }}</b> · Tác giả: {{ book.author }} · Giá bìa: <b>{{ book.price|vnd }}</b></p>
+    <p class="muted mt-1">Đầu sách: <b>{{ book.title }}</b> · Tác giả: {{ book.author }} · Giá bìa: <b>{{ book.price|vnd }}</b> · Tồn kho: <b style="color:var(--primary)">{{ book.available_copies }}/{{ book.total_copies }} bản sẵn sàng</b></p>
   </div>
   <a class="btn btn-ghost" href="{{ url_for('admin.books') }}">{{ icon('arrow') }} Quay lại kho sách</a>
 </div>
@@ -23,7 +23,8 @@
         <th>Trạng thái</th>
         <th>Tình trạng thực tế</th>
         <th>Ngày nhập</th>
-        <th class="text-right">Lượt mượn</th>
+        <th>Lượt mượn</th>
+        <th class="text-right" style="width:140px">Thao tác</th>
       </tr>
     </thead>
     <tbody>
@@ -43,17 +44,111 @@
         {% if cp.note %}<div class="small muted">{{ cp.note }}</div>{% endif %}
       </td>
       <td>{{ cp.created_at|dt('%d/%m/%Y') }}</td>
-      <td class="text-right">
+      <td>
         <span class="badge badge-secondary badge-plain">{{ cp.loans|length }} lượt</span>
+      </td>
+      <td class="text-right">
+        {% if cp.status in ['borrowed', 'reserved'] %}
+          <span class="small muted">Đang lưu thông</span>
+        {% else %}
+          <button type="button" class="btn btn-ghost btn-sm btn-edit-copy"
+                  data-id="{{ cp.id }}"
+                  data-barcode="{{ cp.barcode }}"
+                  data-status="{{ cp.status }}"
+                  data-condition="{{ cp.condition or '' }}"
+                  data-note="{{ cp.note or '' }}">
+            {{ icon('edit') }} Sửa trạng thái
+          </button>
+        {% endif %}
       </td>
     </tr>
     {% else %}
     <tr>
-      <td colspan="7" class="center muted py-4">Chưa có bản sao nào được tạo cho ấn bản này.</td>
+      <td colspan="8" class="center muted py-4">Chưa có bản sao nào được tạo cho ấn bản này.</td>
     </tr>
     {% endfor %}
     </tbody>
   </table>
 </div>
-{% endblock %}
 
+{# --- Modal Cập nhật trạng thái bản sao --- #}
+<div id="edit-copy-modal" class="modal-back" role="dialog" aria-modal="true">
+  <div class="card modal" style="max-width:460px;width:100%;text-align:left">
+    <div class="flex items-center gap-2 mb-2">
+      <div class="m-ico" style="margin:0;width:40px;height:40px;font-size:1.1rem">{{ icon('edit') }}</div>
+      <div>
+        <h3 style="margin:0">Cập nhật bản sao sách</h3>
+        <p class="muted small" style="margin:0">Mã vạch: <b id="modal-barcode-txt" style="font-family:monospace;color:var(--primary)"></b></p>
+      </div>
+    </div>
+
+    <form id="edit-copy-form" method="post" action="" class="mt-3">
+      {{ csrf() }}
+      <div class="field mb-3">
+        <label for="copy-status">Trạng thái bản sao *</label>
+        <select id="copy-status" name="status" class="select" required>
+          <option value="available">Sẵn sàng trên kệ (Available)</option>
+          <option value="damaged">Hư hỏng / Chờ phục hồi (Damaged)</option>
+          <option value="lost">Đã báo mất (Lost)</option>
+          <option value="maintenance">Bảo dưỡng / Kiểm kê (Maintenance)</option>
+        </select>
+        <small class="muted">Chuyển sang "Sẵn sàng" sẽ tự động cộng lại tồn kho cho độc giả mượn.</small>
+      </div>
+
+      <div class="field mb-3">
+        <label for="copy-condition">Tình trạng thực tế</label>
+        <input id="copy-condition" name="condition" class="input" placeholder="Ví dụ: Mới, Tốt, Rách gáy, Ẩm nhẹ...">
+      </div>
+
+      <div class="field mb-3">
+        <label for="copy-note">Ghi chú lưu kho</label>
+        <input id="copy-note" name="note" class="input" placeholder="Ghi chú chi tiết nếu có...">
+      </div>
+
+      <div class="flex gap-2 justify-end mt-4">
+        <button type="button" class="btn btn-ghost" id="edit-copy-cancel">Huỷ bỏ</button>
+        <button type="submit" class="btn btn-primary">{{ icon('check') }} Lưu thay đổi</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const modal = document.getElementById('edit-copy-modal');
+  const cancelBtn = document.getElementById('edit-copy-cancel');
+  const form = document.getElementById('edit-copy-form');
+  const barcodeTxt = document.getElementById('modal-barcode-txt');
+  const statusSelect = document.getElementById('copy-status');
+  const condInput = document.getElementById('copy-condition');
+  const noteInput = document.getElementById('copy-note');
+
+  document.querySelectorAll('.btn-edit-copy').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const copyId = btn.dataset.id;
+      const barcode = btn.dataset.barcode;
+      const status = btn.dataset.status;
+      const cond = btn.dataset.condition;
+      const note = btn.dataset.note;
+
+      form.action = `{{ url_for('admin.book_copies', book_id=book.id) }}/${copyId}/edit`;
+      barcodeTxt.textContent = barcode;
+      statusSelect.value = status;
+      condInput.value = cond;
+      noteInput.value = note;
+
+      modal.classList.add('open');
+    });
+  });
+
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', () => modal.classList.remove('open'));
+  }
+  if (modal) {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.classList.remove('open');
+    });
+  }
+});
+</script>
+{% endblock %}

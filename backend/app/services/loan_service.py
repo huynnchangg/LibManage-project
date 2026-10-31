@@ -35,6 +35,78 @@ def generate_slip_code():
     return f"{prefix}-{seq:04d}"
 
 
+def sync_slip_status(slip):
+    """Tính toán và đồng bộ trạng thái của LoanSlip dựa trên trạng thái của các cuốn sách bên trong.
+    Phiếu nhiều cuốn không bao giờ bị đóng nhầm khi vẫn còn cuốn đang mượn hoặc chờ duyệt."""
+    if not slip or not slip.items:
+        return
+
+    statuses = [item.status for item in slip.items]
+
+    if LOAN_BORROWING in statuses:
+        slip.status = LOAN_BORROWING
+    elif LOAN_READY in statuses:
+        slip.status = LOAN_READY
+    elif LOAN_PENDING in statuses:
+        slip.status = LOAN_PENDING
+    else:
+        # Tất cả các cuốn đã kết thúc chu trình mượn
+        if all(s == LOAN_CANCELLED for s in statuses):
+            slip.status = LOAN_CANCELLED
+        elif all(s in (LOAN_REJECTED, LOAN_CANCELLED) for s in statuses):
+            slip.status = LOAN_REJECTED
+        else:
+            slip.status = LOAN_RETURNED
+            if not slip.completed_at:
+                slip.completed_at = datetime.now()
+
+
+def cancel_expired_pickups():
+    """Tự động hủy các phiếu/lượt mượn 'Chờ lấy sách' (READY_FOR_PICKUP) đã quá 48h:
+    - Chuyển trạng thái lượt mượn sang LOAN_CANCELLED.
+    - Giải phóng bản sao vật lý về COPY_AVAILABLE.
+    - Đồng bộ lại số lượng tồn kho available_copies của đầu sách.
+    - Đồng bộ lại trạng thái tổng thể của phiếu mượn LoanSlip.
+    """
+    now = datetime.now()
+    expired_loans = Loan.query.filter(
+        Loan.status == LOAN_READY,
+        Loan.pickup_deadline.isnot(None),
+        Loan.pickup_deadline < now
+    ).all()
+
+    if not expired_loans:
+        return 0
+
+    affected_slips = set()
+    for loan in expired_loans:
+        loan.status = LOAN_CANCELLED
+        auto_note = "[Tự động hủy: Quá hạn 48h không đến quầy nhận sách]"
+        loan.note = f"{loan.note} | {auto_note}" if loan.note else auto_note
+
+        if loan.copy:
+            if loan.copy.status == COPY_RESERVED:
+                loan.copy.status = COPY_AVAILABLE
+            loan.copy_id = None
+
+        if loan.book:
+            loan.book.sync_copies_count()
+
+        if loan.slip:
+            affected_slips.add(loan.slip)
+
+    for slip in affected_slips:
+        sync_slip_status(slip)
+
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
+
+    return len(expired_loans)
+
+
 def unpaid_fines(user):
     """Tổng tiền phạt chưa nộp (đã chốt) của độc giả."""
     loans = Loan.query.filter(
@@ -55,6 +127,7 @@ def active_loans(user):
 
 def validate_user_eligibility(user, additional_count=1):
     """Kiểm tra điều kiện để độc giả được mượn thêm sách."""
+    cancel_expired_pickups()
     if not user.active:
         raise LoanError("Tài khoản độc giả của bạn hiện đang bị khóa. Vui lòng liên hệ thủ thư để được hỗ trợ.")
     if unpaid_fines(user) > 0:
@@ -76,6 +149,8 @@ def get_cart_items(user):
 
 
 def add_to_cart(user, book):
+    if not book.is_active:
+        raise LoanError(f"Ấn bản “{book.title}” hiện đã ngừng lưu hành.")
     validate_user_eligibility(user, additional_count=0)
     current = active_loans(user)
     if any(l.book_id == book.id for l in current):
@@ -117,6 +192,8 @@ def checkout_cart(user, note=""):
     validate_user_eligibility(user, additional_count=len(items))
 
     for it in items:
+        if not it.book.is_active:
+            raise LoanError(f"Ấn bản “{it.book.title}” hiện đã ngừng lưu hành. Vui lòng xóa khỏi giỏ.")
         if it.book.available_copies < 1:
             raise LoanError(f"Ấn bản “{it.book.title}” vừa hết bản in sẵn sàng. Vui lòng xóa khỏi giỏ hoặc quay lại sau.")
 
@@ -151,6 +228,8 @@ def checkout_cart(user, note=""):
 
 def request_loan(user, book):
     """Độc giả gửi yêu cầu mượn 1 cuốn sách (tương thích backward và mượn nhanh 1-click)."""
+    if not book.is_active:
+        raise LoanError(f"Ấn bản “{book.title}” hiện đã ngừng lưu hành.")
     validate_user_eligibility(user, additional_count=1)
     current = active_loans(user)
     if any(l.book_id == book.id for l in current):
@@ -188,14 +267,12 @@ def cancel_request(loan, user):
 
     if loan.copy and loan.copy.status == COPY_RESERVED:
         loan.copy.status = COPY_AVAILABLE
-        loan.book.available_copies = min(loan.book.total_copies, loan.book.available_copies + 1)
         loan.copy_id = None
+        loan.book.sync_copies_count()
 
     loan.status = LOAN_CANCELLED
     if loan.slip:
-        all_cancelled = all(item.status == LOAN_CANCELLED for item in loan.slip.items if item.id != loan.id)
-        if all_cancelled:
-            loan.slip.status = LOAN_CANCELLED
+        sync_slip_status(loan.slip)
 
     db.session.commit()
 
@@ -247,10 +324,10 @@ def approve(loan, admin, barcode=None):
     loan.processed_by = admin.id
 
     if loan.slip:
-        loan.slip.status = LOAN_READY
-        loan.slip.approved_at = now
-        loan.slip.pickup_deadline = deadline
+        loan.slip.approved_at = loan.slip.approved_at or now
+        loan.slip.pickup_deadline = max(loan.slip.pickup_deadline or deadline, deadline)
         loan.slip.processed_by = admin.id
+        sync_slip_status(loan.slip)
 
     db.session.commit()
 
@@ -258,9 +335,15 @@ def approve(loan, admin, barcode=None):
 def handover(loan, admin):
     """Xác nhận sinh viên đã đến quầy nhận sách:
     Chuyển trạng thái sang BORROWING và bắt đầu đếm hạn trả 14 ngày.
+    Chặn nếu yêu cầu mượn đã quá hạn 48 giờ.
     """
+    cancel_expired_pickups()
     if loan.status != LOAN_READY:
         raise LoanError("Lượt mượn này không ở trạng thái chờ lấy sách.")
+
+    if loan.is_pickup_expired:
+        cancel_expired_pickups()
+        raise LoanError("Lượt mượn này đã quá hạn 48 giờ lấy sách tại quầy nên đã bị tự động hủy, không thể giao sách.")
 
     if not loan.copy:
         raise LoanError("Chưa có bản sách cụ thể nào được gán cho lượt mượn này.")
@@ -276,10 +359,10 @@ def handover(loan, admin):
     loan.processed_by = admin.id
 
     if loan.slip:
-        loan.slip.status = LOAN_BORROWING
-        loan.slip.borrowed_at = now
-        loan.slip.due_date = due
+        loan.slip.borrowed_at = loan.slip.borrowed_at or now
+        loan.slip.due_date = max(loan.slip.due_date or due, due)
         loan.slip.processed_by = admin.id
+        sync_slip_status(loan.slip)
 
     db.session.commit()
 
@@ -302,6 +385,8 @@ def direct_checkout(admin, user, barcodes, note=""):
             raise LoanError(f"Không tìm thấy bản sách có mã vạch “{code}” trong hệ thống.")
         if cp.status != COPY_AVAILABLE:
             raise LoanError(f"Bản sách “{code}” ({cp.book.title}) hiện không khả dụng (trạng thái: {cp.status_label[0]}).")
+        if not cp.book.is_active:
+            raise LoanError(f"Đầu sách “{cp.book.title}” hiện đã ngừng lưu hành.")
         copies.append(cp)
 
     now = datetime.now()
@@ -350,19 +435,15 @@ def reject(loan, admin, reason=""):
 
     if loan.copy and loan.copy.status == COPY_RESERVED:
         loan.copy.status = COPY_AVAILABLE
-        loan.book.available_copies = min(loan.book.total_copies, loan.book.available_copies + 1)
         loan.copy_id = None
+        loan.book.sync_copies_count()
 
     loan.status = LOAN_REJECTED
     loan.note = (reason or "")[:255] or None
     loan.processed_by = admin.id
 
     if loan.slip:
-        all_rejected = all(item.status in (LOAN_REJECTED, LOAN_CANCELLED) for item in loan.slip.items if item.id != loan.id)
-        if all_rejected:
-            loan.slip.status = LOAN_REJECTED
-            loan.slip.note = loan.note
-            loan.slip.processed_by = admin.id
+        sync_slip_status(loan.slip)
 
     db.session.commit()
 
@@ -370,16 +451,24 @@ def reject(loan, admin, reason=""):
 def return_book(loan, admin, condition="normal", damage_percent=0, pay_now=False, note=""):
     """Xử lý trả sách tại quầy:
     - condition: 'normal' | 'damaged' | 'lost'
-    - damage_percent: 0, 25, 50, 75, 100 (% giá bìa sách)
+    - damage_percent: 0 đến 100 (% giá bìa sách)
     - pay_now: Độc giả thanh toán tiền phạt ngay tại quầy
     """
     if loan.status != LOAN_BORROWING:
         raise LoanError("Lượt mượn này hiện không ở trạng thái đang mượn, không thể nhận trả.")
 
+    # Bắt lỗi an toàn cho tỷ lệ hư hại
+    try:
+        dmg_pct = int(damage_percent) if damage_percent not in (None, "") else 0
+    except (ValueError, TypeError):
+        raise LoanError("Tỷ lệ hư hỏng (%) phải là số nguyên từ 0 đến 100.")
+
+    if dmg_pct < 0 or dmg_pct > 100:
+        raise LoanError("Tỷ lệ hư hỏng (%) phải nằm trong khoảng từ 0% đến 100%.")
+
     now = datetime.now()
     overdue_fine = loan.overdue_days * _cfg("FINE_PER_DAY", 5000)
     damage_fine = 0
-    dmg_pct = int(damage_percent or 0)
 
     book = loan.book
     copy = loan.copy
@@ -427,10 +516,7 @@ def return_book(loan, admin, condition="normal", damage_percent=0, pay_now=False
         loan.note = (note or "").strip()[:255]
 
     if loan.slip:
-        active_items = [i for i in loan.slip.items if i.id != loan.id and i.status == LOAN_BORROWING]
-        if not active_items:
-            loan.slip.status = LOAN_RETURNED
-            loan.slip.completed_at = now
+        sync_slip_status(loan.slip)
 
     db.session.commit()
     return total_fine
@@ -438,7 +524,6 @@ def return_book(loan, admin, condition="normal", damage_percent=0, pay_now=False
 
 def renew(loan, user):
     """Gia hạn lượt mượn sách thêm số ngày theo cấu hình."""
-
     # 1. Chỉ chủ sở hữu lượt mượn mới được gia hạn
     if loan.user_id != user.id:
         raise LoanError("Bạn không có quyền thao tác trên lượt mượn này.")

@@ -60,8 +60,8 @@
       {{ csrf() }}
       <div class="field text-left">
         <label for="new_password">Mật khẩu mới *</label>
-        <input id="new_password" name="new_password" class="input" required value="reader123" autocomplete="off">
-        <small class="muted">Gợi ý mặc định: reader123</small>
+        <input id="new_password" name="new_password" type="password" class="input" required minlength="6" placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)" autocomplete="new-password">
+        <small class="muted">Tối thiểu 6 ký tự để bảo đảm an toàn.</small>
       </div>
       <div class="flex gap-2 justify-end mt-3">
         <button type="button" class="btn btn-ghost" id="reset-pwd-cancel">Huỷ bỏ</button>
@@ -145,4 +145,3 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 {% endblock %}
-
