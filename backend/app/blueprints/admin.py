@@ -8,7 +8,7 @@ from sqlalchemy.orm import joinedload
 
 from ..extensions import db
 from ..models import (
-    COPY_AVAILABLE, COPY_BORROWED, COPY_DAMAGED, COPY_LOST, COPY_RESERVED,
+    COPY_AVAILABLE, COPY_BORROWED, COPY_DAMAGED, COPY_LOST, COPY_MAINTENANCE, COPY_RESERVED,
     LOAN_BORROWING, LOAN_PENDING, LOAN_READY, LOAN_RETURNED, ROLE_READER,
     Book, BookCopy, Category, Loan, LoanSlip, User,
 )
@@ -26,6 +26,13 @@ def admin_required(fn):
             abort(403)
         return fn(*a, **kw)
     return wrapper
+
+
+@bp.before_request
+def admin_before_request():
+    """Tự động kiểm tra và hủy các phiếu quá hạn 48h chưa đến nhận khi thủ thư truy cập quản trị."""
+    if current_user.is_authenticated and current_user.is_admin:
+        loan_service.cancel_expired_pickups()
 
 
 def _try(action, ok_msg, redirect_to, *args, **kwargs):
@@ -65,7 +72,7 @@ def books():
         pagination=pagination,
         categories=Category.query.order_by(Category.name).all(),
         q=q,
-        category_id=category_id,
+        category_id=category_id
     )
 
 
@@ -110,6 +117,37 @@ def book_toggle(book_id):
 def book_copies(book_id):
     book = Book.query.get_or_404(book_id)
     return render_template("admin/book_copies.html", book=book)
+
+
+@bp.route("/books/<int:book_id>/copies/<int:copy_id>/edit", methods=["POST"])
+@admin_required
+def book_copy_edit(book_id, copy_id):
+    """Cập nhật trạng thái và tình trạng thực tế của một bản sao vật lý."""
+    book = Book.query.get_or_404(book_id)
+    copy = BookCopy.query.filter_by(id=copy_id, book_id=book.id).first_or_404()
+    new_status = request.form.get("status", "").strip()
+    condition = request.form.get("condition", "").strip()
+    note = request.form.get("note", "").strip()
+
+    if copy.status in (COPY_BORROWED, COPY_RESERVED) and new_status != copy.status:
+        flash(f"Bản sao {copy.barcode} đang trong lượt mượn hoặc giữ chỗ, không thể đổi trạng thái thủ công.", "danger")
+        return redirect(url_for("admin.book_copies", book_id=book.id))
+
+    valid_statuses = [COPY_AVAILABLE, COPY_DAMAGED, COPY_LOST, COPY_MAINTENANCE]
+    if new_status not in valid_statuses:
+        flash("Trạng thái bản sao không hợp lệ.", "danger")
+        return redirect(url_for("admin.book_copies", book_id=book.id))
+
+    copy.status = new_status
+    if condition:
+        copy.condition = condition
+    copy.note = note or None
+
+    book.sync_copies_count()
+    db.session.commit()
+
+    flash(f"Đã cập nhật trạng thái bản sao {copy.barcode} thành “{copy.status_label[0]}”.", "success")
+    return redirect(url_for("admin.book_copies", book_id=book.id))
 
 
 @bp.route("/books/<int:book_id>/delete", methods=["POST"])
@@ -160,39 +198,44 @@ def category_edit(cat_id):
 @bp.route("/categories/<int:cat_id>/delete", methods=["POST"])
 @admin_required
 def category_delete(cat_id):
+    cat = Category.query.get_or_404(cat_id)
     return _try(
         book_service.delete_category,
-        "Đã xoá thể loại sách thành công.",
+        f"Đã xoá thể loại “{cat.name}” thành công.",
         url_for("admin.categories"),
-        Category.query.get_or_404(cat_id)
+        cat
     )
 
 
 # ===========================================================================
-# ĐỘC GIẢ (USERS)
+# QUẢN LÝ ĐỘC GIẢ (USERS)
 # ===========================================================================
 
 @bp.route("/users")
 @admin_required
 def users():
     q = request.args.get("q", "").strip()
+    status_filter = request.args.get("status", "all")
     page = request.args.get("page", 1, type=int)
-    per_page = 15
 
-    query = User.query.filter_by(role=ROLE_READER)
+    query = User.query.filter(User.role == ROLE_READER)
     if q:
         like = f"%{q}%"
         query = query.filter(
             db.or_(
-                User.full_name.ilike(like),
                 User.username.ilike(like),
+                User.full_name.ilike(like),
                 User.student_code.ilike(like),
-                User.email.ilike(like),
+                User.email.ilike(like)
             )
         )
+    if status_filter == "active":
+        query = query.filter(User.active.is_(True))
+    elif status_filter == "locked":
+        query = query.filter(User.active.is_(False))
 
-    pagination = query.order_by(User.full_name).paginate(page=page, per_page=per_page, error_out=False)
-    return render_template("admin/users.html", pagination=pagination, users=pagination.items, q=q)
+    pagination = query.order_by(User.created_at.desc()).paginate(page=page, per_page=12, error_out=False)
+    return render_template("admin/users.html", pagination=pagination, users=pagination.items, q=q, status_filter=status_filter)
 
 
 @bp.route("/users/new", methods=["GET", "POST"])
@@ -201,29 +244,19 @@ def user_new():
     if request.method == "POST":
         f = request.form
         username = f.get("username", "").strip()
-        email = f.get("email", "").strip().lower()
+        email = f.get("email", "").strip()
         full_name = f.get("full_name", "").strip()
-        student_code = f.get("student_code", "").strip() or None
-        password = f.get("password", "")
+        student_code = f.get("student_code", "").strip()
+        password = f.get("password", "").strip() or "reader123"
 
-        error = None
-        if not (username and email and full_name and password):
-            error = "Vui lòng điền đầy đủ các thông tin bắt buộc."
-        elif len(password) < 6:
-            error = "Mật khẩu phải có độ dài tối thiểu 6 ký tự."
-        elif User.query.filter((User.username == username) | (User.email == email)).first():
-            error = "Tên đăng nhập hoặc email này đã tồn tại trên hệ thống."
-
-        if error:
-            flash(error, "danger")
+        if not username or not email or not full_name:
+            flash("Vui lòng điền đầy đủ tên đăng nhập, email và họ tên.", "danger")
+        elif User.query.filter_by(username=username).first():
+            flash("Tên đăng nhập này đã tồn tại trên hệ thống.", "danger")
+        elif User.query.filter_by(email=email).first():
+            flash("Địa chỉ email này đã được sử dụng.", "danger")
         else:
-            user = User(
-                username=username,
-                email=email,
-                full_name=full_name,
-                student_code=student_code,
-                role=ROLE_READER
-            )
+            user = User(username=username, email=email, full_name=full_name, student_code=student_code or None)
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
@@ -250,10 +283,14 @@ def user_reset_password(user_id):
     user = User.query.get_or_404(user_id)
     if user.is_admin:
         abort(403)
-    new_pass = request.form.get("new_password", "").strip() or "reader123"
+    new_pass = request.form.get("new_password", "").strip()
+    if not new_pass or len(new_pass) < 6:
+        flash("Mật khẩu mới phải có độ dài tối thiểu 6 ký tự.", "danger")
+        return redirect(url_for("admin.user_detail", user_id=user.id))
+
     user.set_password(new_pass)
     db.session.commit()
-    flash(f"Đã đặt lại mật khẩu cho độc giả @{user.username} thành công (Mật khẩu mới: {new_pass}).", "success")
+    flash(f"Đã đặt lại mật khẩu cho độc giả @{user.username} thành công.", "success")
     return redirect(url_for("admin.user_detail", user_id=user.id))
 
 
@@ -281,31 +318,34 @@ def loans():
     page = request.args.get("page", 1, type=int)
     per_page = 15
 
-    query = Loan.query.join(User, Loan.user_id == User.id).join(Book, Loan.book_id == Book.id)
+    query = Loan.query.options(joinedload(Loan.user), joinedload(Loan.book), joinedload(Loan.copy))
+
+    if status == "ready":
+        query = query.filter(Loan.status == LOAN_READY)
+    elif status == "borrowing":
+        query = query.filter(Loan.status == LOAN_BORROWING, Loan.due_date >= date.today())
+    elif status == "overdue":
+        query = query.filter(Loan.status == LOAN_BORROWING, Loan.due_date < date.today())
+    elif status == "returned":
+        query = query.filter(Loan.status.in_([LOAN_RETURNED, "damaged", "lost"]))
+    elif status == "all":
+        pass
+    else:
+        query = query.filter(Loan.status == LOAN_PENDING)
 
     if q:
         like = f"%{q}%"
-        query = query.outerjoin(BookCopy, Loan.copy_id == BookCopy.id).outerjoin(LoanSlip, Loan.slip_id == LoanSlip.id).filter(
+        query = query.join(User, Loan.user_id == User.id).join(Book, Loan.book_id == Book.id).outerjoin(BookCopy, Loan.copy_id == BookCopy.id).join(LoanSlip, Loan.slip_id == LoanSlip.id).filter(
             db.or_(
+                LoanSlip.code.ilike(like),
                 User.full_name.ilike(like),
-                User.username.ilike(like),
                 User.student_code.ilike(like),
                 Book.title.ilike(like),
-                BookCopy.barcode.ilike(like),
-                LoanSlip.code.ilike(like),
+                BookCopy.barcode.ilike(like)
             )
         )
 
-    if status == "overdue":
-        query = query.filter(Loan.status == LOAN_BORROWING, Loan.due_date < date.today()).order_by(Loan.due_date.asc())
-    elif status == "ready":
-        query = query.filter(Loan.status == LOAN_READY).order_by(Loan.approved_at.desc())
-    else:
-        if status != "all":
-            query = query.filter(Loan.status == status)
-        query = query.order_by(Loan.requested_at.desc())
-
-    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    pagination = query.order_by(Loan.requested_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
     return render_template(
         "admin/loans.html",
         pagination=pagination,
@@ -392,7 +432,18 @@ def loan_reject(loan_id):
 def loan_return(loan_id):
     f = request.form
     condition = f.get("condition", "normal")
-    damage_percent = int(f.get("damage_percent", 0) or 0)
+    damage_percent_raw = f.get("damage_percent", "0")
+
+    try:
+        damage_percent = int(damage_percent_raw) if damage_percent_raw not in (None, "") else 0
+    except (ValueError, TypeError):
+        flash("Tỷ lệ hư hỏng (%) phải là số nguyên từ 0 đến 100.", "danger")
+        return redirect(request.referrer or url_for("admin.loans", status="borrowing"))
+
+    if damage_percent < 0 or damage_percent > 100:
+        flash("Tỷ lệ hư hỏng (%) phải nằm trong khoảng từ 0% đến 100%.", "danger")
+        return redirect(request.referrer or url_for("admin.loans", status="borrowing"))
+
     pay_now = f.get("pay_now") == "1"
     note = f.get("note", "").strip()
 
