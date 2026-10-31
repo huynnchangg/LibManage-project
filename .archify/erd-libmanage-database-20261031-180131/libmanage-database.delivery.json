@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "592c60ca-2dee-492b-8233-76450a8bac57",
+  "status": "current",
+  "command": "deliver",
+  "type": "erd",
+  "input": "E:\\CODE\\1. Lap trinh web\\Bài tập nhóm\\LibManage-project\\.archify\\erd-libmanage-database-20261031-180131\\candidate.json",
+  "output": "E:\\CODE\\1. Lap trinh web\\Bài tập nhóm\\LibManage-project\\.archify\\erd-libmanage-database-20261031-180131\\libmanage-database.html",
+  "specification": {
+    "sha256": "1ff605e541701c5c48f10a6e10daf63a274907d8c7756683d56c08431526ab19",
+    "bytes": 6478
+  },
+  "artifact": {
+    "sha256": "5ef336973632af96de4c23da34b12d553dba0daa690bc2aaf3bb42bfda1b1756",
+    "bytes": 871562
+  }
+}

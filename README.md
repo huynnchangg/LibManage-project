@@ -190,3 +190,30 @@ python backend/seed.py --reset
 ### Tài khoản mẫu:
 * **Admin (Thủ thư):** `admin / admin123`
 * **18 Độc giả mẫu:** `reader01` đến `reader18` (mật khẩu chung: `reader123`)
+
+## 7. Công cụ phân tích & tài liệu hóa
+
+### Graphify — Đồ thị phụ thuộc hệ thống
+Phân tích cấu trúc code và sinh đồ thị quan hệ giữa các module.
+
+```
+graphify-out/
+├── graph.html          # Đồ thị tương tác (279 nodes, 697 edges, 12 communities)
+├── graph.json          # Dữ liệu đồ thị thô
+├── GRAPH_REPORT.md     # Báo cáo: God Nodes, Import Cycles, Knowledge Gaps
+└── cost.json           # Chi phí token
+```
+
+Các community chính được phát hiện: *Admin Portal & Permissions*, *Circulation & Fine Engine*, *Reader UI & Jinja Macros*, *Catalog API & Inventory*, *Design System & UI Tokens*.
+
+### Archify — Sơ đồ kiến trúc
+Sinh sơ đồ kiến trúc, ERD và sequence diagram tự động từ codebase.
+
+```
+.archify/
+├── architecture-libmanage-overview-*/   # Sơ đồ kiến trúc tổng thể hệ thống
+├── erd-libmanage-database-*/            # ERD quan hệ giữa các bảng CSDL
+└── sequence-borrow-circulation-*/       # Sequence diagram luồng mượn – trả sách
+```
+
+Mở file `.html` tương ứng trong mỗi thư mục để xem sơ đồ trực tiếp trên trình duyệt.

@@ -1,0 +1,209 @@
+{
+  "schema_version": 1,
+  "diagram_type": "erd",
+  "meta": {
+    "title": "LibManage - Database Entity-Relationship Diagram",
+    "locale": "en",
+    "output": ".archify/erd-libmanage-database-20261031-180131/libmanage-database.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "catalog_view",
+        "label": "Book & Inventory Catalog",
+        "focus": ["category", "book", "book_copy"],
+        "note": "Books categorized with physical barcodes in inventory."
+      },
+      {
+        "id": "circulation_view",
+        "label": "Borrowing & Fines Lifecycle",
+        "focus": ["loan_slip", "loan", "fine_payment", "user"],
+        "note": "Reader slips containing loan items and penalty settlements."
+      }
+    ]
+  },
+  "layout": {
+    "mode": "grid",
+    "gapY": 38,
+    "gapX": 80
+  },
+  "entities": [
+    {
+      "id": "user",
+      "label": "user",
+      "tag": "accounts",
+      "row": 0,
+      "col": 0,
+      "width": 260,
+      "attributes": [
+        { "name": "id", "type": "integer", "key": "pk" },
+        { "name": "username", "type": "varchar(80)", "key": "uk" },
+        { "name": "password_hash", "type": "varchar(200)" },
+        { "name": "full_name", "type": "varchar(120)" },
+        { "name": "email", "type": "varchar(120)" },
+        { "name": "student_code", "type": "varchar(50)" },
+        { "name": "is_admin", "type": "boolean" },
+        { "name": "active", "type": "boolean" },
+        { "name": "created_at", "type": "datetime" }
+      ]
+    },
+    {
+      "id": "loan_slip",
+      "label": "loan_slip",
+      "tag": "circulation",
+      "row": 0,
+      "col": 1,
+      "width": 260,
+      "attributes": [
+        { "name": "id", "type": "integer", "key": "pk" },
+        { "name": "code", "type": "varchar(30)", "key": "uk" },
+        { "name": "user_id", "type": "integer", "key": "fk", "references": "user.id" },
+        { "name": "status", "type": "varchar(20)" },
+        { "name": "librarian_id", "type": "integer", "key": "fk", "references": "user.id" },
+        { "name": "note", "type": "varchar(255)" },
+        { "name": "created_at", "type": "datetime" }
+      ]
+    },
+    {
+      "id": "loan",
+      "label": "loan",
+      "tag": "circulation",
+      "row": 1,
+      "col": 1,
+      "width": 280,
+      "attributes": [
+        { "name": "id", "type": "integer", "key": "pk" },
+        { "name": "slip_id", "type": "integer", "key": "fk", "references": "loan_slip.id" },
+        { "name": "book_id", "type": "integer", "key": "fk", "references": "book.id" },
+        { "name": "copy_id", "type": "integer", "key": "fk", "references": "book_copy.id" },
+        { "name": "user_id", "type": "integer", "key": "fk", "references": "user.id" },
+        { "name": "status", "type": "varchar(20)" },
+        { "name": "due_date", "type": "datetime" },
+        { "name": "return_date", "type": "datetime" },
+        { "name": "fine_amount", "type": "integer" },
+        { "name": "fine_paid", "type": "boolean" }
+      ]
+    },
+    {
+      "id": "fine_payment",
+      "label": "fine_payment",
+      "tag": "circulation",
+      "row": 2,
+      "col": 1,
+      "width": 260,
+      "attributes": [
+        { "name": "id", "type": "integer", "key": "pk" },
+        { "name": "loan_id", "type": "integer", "key": "fk", "references": "loan.id" },
+        { "name": "user_id", "type": "integer", "key": "fk", "references": "user.id" },
+        { "name": "librarian_id", "type": "integer", "key": "fk", "references": "user.id" },
+        { "name": "amount", "type": "integer" },
+        { "name": "payment_method", "type": "varchar(30)" },
+        { "name": "paid_at", "type": "datetime" }
+      ]
+    },
+    {
+      "id": "category",
+      "label": "category",
+      "tag": "catalog",
+      "row": 0,
+      "col": 2,
+      "width": 250,
+      "attributes": [
+        { "name": "id", "type": "integer", "key": "pk" },
+        { "name": "name", "type": "varchar(100)", "key": "uk" },
+        { "name": "description", "type": "text" }
+      ]
+    },
+    {
+      "id": "book",
+      "label": "book",
+      "tag": "catalog",
+      "row": 1,
+      "col": 2,
+      "width": 260,
+      "attributes": [
+        { "name": "id", "type": "integer", "key": "pk" },
+        { "name": "title", "type": "varchar(200)" },
+        { "name": "author", "type": "varchar(150)" },
+        { "name": "category_id", "type": "integer", "key": "fk", "references": "category.id" },
+        { "name": "isbn", "type": "varchar(30)" },
+        { "name": "price", "type": "integer" },
+        { "name": "total_copies", "type": "integer" },
+        { "name": "available_copies", "type": "integer" }
+      ]
+    },
+    {
+      "id": "book_copy",
+      "label": "book_copy",
+      "tag": "catalog",
+      "row": 2,
+      "col": 2,
+      "width": 250,
+      "attributes": [
+        { "name": "id", "type": "integer", "key": "pk" },
+        { "name": "book_id", "type": "integer", "key": "fk", "references": "book.id" },
+        { "name": "barcode", "type": "varchar(50)", "key": "uk" },
+        { "name": "status", "type": "varchar(20)" },
+        { "name": "note", "type": "varchar(255)" }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel_book_category",
+      "from": "book",
+      "to": "category",
+      "label": "classified in",
+      "fromCardinality": "many",
+      "toCardinality": "one"
+    },
+    {
+      "id": "rel_copy_book",
+      "from": "book_copy",
+      "to": "book",
+      "label": "physical unit of",
+      "fromCardinality": "many",
+      "toCardinality": "one"
+    },
+    {
+      "id": "rel_slip_user",
+      "from": "loan_slip",
+      "to": "user",
+      "label": "borrowed by",
+      "fromCardinality": "many",
+      "toCardinality": "one"
+    },
+    {
+      "id": "rel_loan_slip",
+      "from": "loan",
+      "to": "loan_slip",
+      "label": "contained in",
+      "fromCardinality": "many",
+      "toCardinality": "one"
+    },
+    {
+      "id": "rel_loan_book",
+      "from": "loan",
+      "to": "book",
+      "label": "borrows title",
+      "fromCardinality": "many",
+      "toCardinality": "one"
+    },
+    {
+      "id": "rel_loan_copy",
+      "from": "loan",
+      "to": "book_copy",
+      "label": "assigned copy",
+      "fromCardinality": "many",
+      "toCardinality": "one",
+      "fromOptional": true
+    },
+    {
+      "id": "rel_fine_loan",
+      "from": "fine_payment",
+      "to": "loan",
+      "label": "settles penalty",
+      "fromCardinality": "many",
+      "toCardinality": "one"
+    }
+  ]
+}

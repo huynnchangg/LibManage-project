@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "LibManage - Book Borrowing and Circulation Lifecycle",
+    "output": ".archify/sequence-borrow-circulation-20261031-180131/borrow-circulation.html",
+    "viewBox": [1080, 630],
+    "column_fit": "spread",
+    "animation": "trace",
+    "quality_profile": "showcase"
+  },
+  "participants": [
+    { "id": "reader", "type": "external", "label": "Reader", "sublabel": "Web Client" },
+    { "id": "cart_ui", "type": "frontend", "label": "Reader Web UI", "sublabel": "Cart & Slip Views" },
+    { "id": "flask_app", "type": "backend", "label": "Flask Blueprints", "sublabel": "Route Handlers" },
+    { "id": "loan_svc", "type": "backend", "label": "Loan Service", "sublabel": "Circulation Engine" },
+    { "id": "database", "type": "database", "label": "SQLite Database", "sublabel": "SQLAlchemy ORM" },
+    { "id": "librarian", "type": "external", "label": "Librarian", "sublabel": "Desk Station" }
+  ],
+  "segments": [
+    { "from": 150, "to": 315, "label": "1. Online Checkout & Slip Generation" },
+    { "from": 325, "to": 408, "label": "2. Librarian Handover & Barcode Scan" },
+    { "from": 418, "to": 528, "label": "3. Return & Penalty Settlement" }
+  ],
+  "messages": [
+    { "id": "msg-cart-checkout", "from": "reader", "to": "cart_ui", "y": 160, "label": "submit checkout", "variant": "default" },
+    { "id": "msg-post-checkout", "from": "cart_ui", "to": "flask_app", "y": 189, "label": "POST /cart/checkout", "variant": "emphasis" },
+    { "id": "msg-call-service", "from": "flask_app", "to": "loan_svc", "y": 218, "label": "checkout_cart()", "variant": "default" },
+    { "id": "msg-validate-rules", "from": "loan_svc", "to": "database", "y": 247, "label": "validate rules & INSERT slip", "variant": "emphasis" },
+    { "id": "msg-ret-slip", "from": "database", "to": "flask_app", "y": 276, "label": "slip_code created", "variant": "return" },
+    { "id": "msg-show-slip", "from": "flask_app", "to": "reader", "y": 305, "label": "show ticket (slip_detail)", "variant": "return" },
+    { "id": "msg-admin-handover", "from": "librarian", "to": "flask_app", "y": 338, "label": "POST /admin/loans/handover", "variant": "emphasis" },
+    { "id": "msg-svc-handover", "from": "flask_app", "to": "loan_svc", "y": 367, "label": "handover(copy_barcode)", "variant": "default" },
+    { "id": "msg-db-handover", "from": "loan_svc", "to": "database", "y": 396, "label": "status='borrowing', copies-=1", "variant": "emphasis" },
+    { "id": "msg-admin-return", "from": "librarian", "to": "flask_app", "y": 430, "label": "POST /admin/loans/return", "variant": "emphasis" },
+    { "id": "msg-svc-return", "from": "flask_app", "to": "loan_svc", "y": 459, "label": "return_book()", "variant": "default" },
+    { "id": "msg-db-return", "from": "loan_svc", "to": "database", "y": 488, "label": "calc fine & restore copies", "variant": "emphasis" },
+    { "id": "msg-done-return", "from": "database", "to": "librarian", "y": 517, "label": "settlement complete", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "cart_ui", "from": 160, "to": 192, "type": "frontend" },
+    { "participant": "flask_app", "from": 189, "to": 308, "type": "backend" },
+    { "participant": "loan_svc", "from": 218, "to": 280, "type": "backend" },
+    { "participant": "database", "from": 247, "to": 280, "type": "database" },
+    { "participant": "flask_app", "from": 338, "to": 400, "type": "backend" },
+    { "participant": "loan_svc", "from": 367, "to": 400, "type": "backend" },
+    { "participant": "database", "from": 396, "to": 402, "type": "database" },
+    { "participant": "flask_app", "from": 430, "to": 520, "type": "backend" },
+    { "participant": "loan_svc", "from": 459, "to": 495, "type": "backend" },
+    { "participant": "database", "from": 488, "to": 520, "type": "database" }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Online Reservation",
+      "items": [
+        "Reader submits borrowing cart online with optional pickup note",
+        "System verifies eligibility (unpaid fines, active loan quota)",
+        "Generates unique slip code for pickup verification"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Desk Verification",
+      "items": [
+        "Librarian scans physical book copy barcode at checkout desk",
+        "Binds specific barcode to loan record and decrements available inventory",
+        "Calculates due date based on system loan period config"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Return & Settlement",
+      "items": [
+        "Physical book inspected for wear, damage, or overdue status",
+        "Automated overdue penalty calculation (5,000 VND / overdue day)",
+        "Fine payment settlement recorded and inventory copy returned to active stock"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "LibManage - System Architecture Overview",
+    "output": ".archify/architecture-libmanage-overview-20261031-180131/libmanage-overview.html",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    { "id": "readers", "type": "external", "label": "Library Readers", "sublabel": "Browser / Mobile UI", "pos": [40, 200], "size": [130, 60] },
+    { "id": "librarians", "type": "external", "label": "Librarian Desk", "sublabel": "Circulation Admin Station", "pos": [40, 360], "size": [130, 60] },
+    { "id": "templates_reader", "type": "frontend", "label": "Reader Web UI", "sublabel": "Jinja2 (Catalog, Cart, Loans)", "pos": [240, 180], "size": [150, 60] },
+    { "id": "templates_admin", "type": "frontend", "label": "Admin Web Portal", "sublabel": "Jinja2 (Circulation, Fines)", "pos": [240, 300], "size": [150, 60] },
+    { "id": "static_assets", "type": "frontend", "label": "Static Assets", "sublabel": "CSS Variables + app.js", "pos": [240, 420], "size": [150, 60] },
+    { "id": "auth_module", "type": "security", "label": "Auth & Session", "sublabel": "Flask-Login + CSRF", "pos": [460, 80], "size": [150, 60], "tag": "Session Guard" },
+    { "id": "blueprints_main", "type": "backend", "label": "Main Blueprint", "sublabel": "Catalog, Cart, My Loans", "pos": [460, 200], "size": [150, 60] },
+    { "id": "blueprints_admin", "type": "backend", "label": "Admin Blueprint", "sublabel": "Loan Handover, Returns, Fines", "pos": [460, 320], "size": [150, 60] },
+    { "id": "blueprints_api", "type": "backend", "label": "Catalog API", "sublabel": "REST Endpoints (/api/books)", "pos": [460, 440], "size": [150, 60] },
+    { "id": "loan_service", "type": "backend", "label": "Loan Service", "sublabel": "Eligibility, Status, Fines", "pos": [680, 220], "size": [150, 60], "tag": "Core Engine" },
+    { "id": "book_service", "type": "backend", "label": "Book Service", "sublabel": "Catalog & Inventory Sync", "pos": [680, 380], "size": [150, 60] },
+    { "id": "orm_models", "type": "database", "label": "SQLAlchemy ORM", "sublabel": "User, Book, Loan, Fine", "pos": [900, 220], "size": [140, 60] },
+    { "id": "sqlite_db", "type": "database", "label": "SQLite Database", "sublabel": "library.db (WAL Mode)", "pos": [900, 380], "size": [140, 60], "tag": "Foreign Keys On" }
+  ],
+  "boundaries": [
+    { "kind": "security-group", "label": "Client Actors", "wraps": ["readers", "librarians"] },
+    { "kind": "region", "label": "Presentation Layer (Jinja2 & Static Tokens)", "wraps": ["templates_reader", "templates_admin", "static_assets"] },
+    { "kind": "region", "label": "Application Layer (Flask 3.0 & Domain Services)", "wraps": ["auth_module", "blueprints_main", "blueprints_admin", "blueprints_api", "loan_service", "book_service"] },
+    { "kind": "region", "label": "Persistence Tier (SQLAlchemy & SQLite)", "wraps": ["orm_models", "sqlite_db"] }
+  ],
+  "connections": [
+    { "id": "readers-to-ui", "from": "readers", "to": "templates_reader", "label": "Browse / Cart", "variant": "emphasis" },
+    { "id": "librarians-to-admin-ui", "from": "librarians", "to": "templates_admin", "label": "Desk Admin", "variant": "emphasis" },
+    { "id": "reader-to-main", "from": "templates_reader", "to": "blueprints_main", "label": "HTTP Route" },
+    { "id": "admin-to-blueprint", "from": "templates_admin", "to": "blueprints_admin", "label": "Admin Action" },
+    { "id": "auth-guard", "from": "auth_module", "to": "blueprints_main", "label": "session check", "variant": "security" },
+    { "id": "auth-admin-guard", "from": "auth_module", "to": "blueprints_admin", "label": "admin_required", "variant": "security" },
+    { "id": "main-to-loan", "from": "blueprints_main", "to": "loan_service", "label": "borrow / renew" },
+    { "id": "admin-to-loan", "from": "blueprints_admin", "to": "loan_service", "label": "approve / return" },
+    { "id": "admin-to-book", "from": "blueprints_admin", "to": "book_service", "label": "manage copies" },
+    { "id": "api-to-book", "from": "blueprints_api", "to": "book_service", "label": "search stats" },
+    { "id": "loan-to-orm", "from": "loan_service", "to": "orm_models", "label": "query / commit" },
+    { "id": "book-to-orm", "from": "book_service", "to": "orm_models", "label": "inventory count" },
+    { "id": "orm-to-sqlite", "from": "orm_models", "to": "sqlite_db", "label": "SQL DDL/DML", "variant": "emphasis" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Presentation Tier", "items": ["Modular Jinja2 templates for Readers and Librarians", "Shared design token system with dark/light themes in style.css", "Vanilla JavaScript (app.js) without heavyweight frontend dependencies"] },
+    { "dot": "emerald", "title": "Application Core", "items": ["Flask 3.0 Blueprints separating Public, Admin, and API responsibilities", "Domain service isolation: LoanService for circulation, BookService for catalog", "Session management, CSRF validation, and admin_required protection"] },
+    { "dot": "rose", "title": "Database & Reliability", "items": ["SQLAlchemy 2.0 ORM modeling physical copies and fine calculations", "SQLite with WAL pragma and enforced foreign key constraints", "Automatic seed data generation with realistic circulation histories"] }
+  ]
+}
