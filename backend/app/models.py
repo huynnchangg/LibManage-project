@@ -68,6 +68,11 @@ class User(UserMixin, db.Model):
     loans = db.relationship("Loan", foreign_keys="Loan.user_id", back_populates="user")
     loan_slips = db.relationship("LoanSlip", foreign_keys="LoanSlip.user_id", back_populates="user")
     cart_items = db.relationship("CartItem", back_populates="user", cascade="all, delete-orphan")
+    collected_fine_payments = db.relationship(
+        "FinePayment",
+        back_populates="collector",
+        foreign_keys="FinePayment.collector_id"
+    )
 
     @property
     def is_active(self):
@@ -225,6 +230,11 @@ class Loan(db.Model):
     book = db.relationship("Book", back_populates="loans")
     copy = db.relationship("BookCopy", back_populates="loans")
     processor = db.relationship("User", foreign_keys=[processed_by])
+    fine_payments = db.relationship(
+        "FinePayment",
+        back_populates="loan",
+        cascade="all, delete-orphan"
+    )
 
     @property
     def is_pickup_expired(self):
@@ -268,3 +278,31 @@ class CartItem(db.Model):
 
     user = db.relationship("User", back_populates="cart_items")
     book = db.relationship("Book", back_populates="cart_items")
+
+
+class FinePayment(db.Model):
+    """Lịch sử giao dịch thu tiền phạt của từng lượt mượn."""
+    id = db.Column(db.Integer, primary_key=True)
+
+    loan_id = db.Column(
+        db.Integer,
+        db.ForeignKey("loan.id"),
+        nullable=False,
+        index=True
+    )
+
+    amount = db.Column(db.Integer, nullable=False)
+    paid_at = db.Column(db.DateTime, nullable=False, default=datetime.now)
+
+    collector_id = db.Column(
+        db.Integer,
+        db.ForeignKey("user.id"),
+        nullable=False
+    )
+
+    loan = db.relationship("Loan", back_populates="fine_payments")
+    collector = db.relationship(
+        "User",
+        back_populates="collected_fine_payments",
+        foreign_keys=[collector_id]
+    )

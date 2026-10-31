@@ -9,7 +9,7 @@ from ..models import (
     COPY_AVAILABLE, COPY_BORROWED, COPY_DAMAGED, COPY_LOST, COPY_RESERVED,
     LOAN_BORROWING, LOAN_CANCELLED, LOAN_DAMAGED, LOAN_LOST, LOAN_PENDING,
     LOAN_READY, LOAN_REJECTED, LOAN_RETURNED, SLIP_TYPE_DIRECT, SLIP_TYPE_ONLINE,
-    Book, BookCopy, CartItem, Loan, LoanSlip, User,
+    Book, BookCopy, CartItem, FinePayment, Loan, LoanSlip, User,
 )
 
 
@@ -211,6 +211,14 @@ def approve(loan, admin, barcode=None):
     if loan.status != LOAN_PENDING:
         raise LoanError("Yêu cầu mượn này không còn ở trạng thái chờ duyệt.")
 
+    reader = loan.user
+    if not reader.active:
+        raise LoanError("Tài khoản độc giả đang bị khoá, không thể duyệt.")
+    if unpaid_fines(reader) > 0:
+        raise LoanError("Độc giả còn tiền phạt chưa nộp, không thể duyệt.")
+    if any(l.is_overdue for l in active_loans(reader)):
+        raise LoanError("Độc giả đang có sách quá hạn, không thể duyệt.")
+
     book = loan.book
     copy = None
     if barcode:
@@ -402,6 +410,17 @@ def return_book(loan, admin, condition="normal", damage_percent=0, pay_now=False
     loan.damage_percent = dmg_pct
     loan.fine_amount = total_fine
     loan.fine_paid = (total_fine == 0) or bool(pay_now)
+
+    if total_fine > 0 and pay_now:
+        db.session.add(
+            FinePayment(
+                loan_id=loan.id,
+                amount=total_fine,
+                paid_at=now,
+                collector_id=admin.id,
+            )
+        )
+
     loan.returned_at = now
     loan.processed_by = admin.id
     if note:
@@ -418,32 +437,82 @@ def return_book(loan, admin, condition="normal", damage_percent=0, pay_now=False
 
 
 def renew(loan, user):
-    """Gia hạn thời gian mượn sách."""
+    """Gia hạn lượt mượn sách thêm số ngày theo cấu hình."""
+
+    # 1. Chỉ chủ sở hữu lượt mượn mới được gia hạn
     if loan.user_id != user.id:
         raise LoanError("Bạn không có quyền thao tác trên lượt mượn này.")
+
+    # 2. Tài khoản phải đang hoạt động
     if not user.active:
-        raise LoanError("Tài khoản độc giả của bạn hiện đang bị khóa. Vui lòng liên hệ thủ thư để được hỗ trợ.")
+        raise LoanError("Tài khoản của bạn đang bị khóa, không thể gia hạn.")
+
+    # 3. Không được còn tiền phạt chưa thanh toán
     if unpaid_fines(user) > 0:
-        raise LoanError("Bạn còn tiền phạt chưa nộp, vui lòng thanh toán tại quầy thư viện trước khi gia hạn.")
+        raise LoanError("Bạn còn tiền phạt chưa thanh toán. Vui lòng thanh toán trước khi gia hạn.")
+
+    # 4. Chỉ gia hạn sách đang được mượn thực tế
     if loan.status != LOAN_BORROWING:
-        raise LoanError("Chỉ có thể gia hạn đối với những cuốn sách đang trong thời hạn mượn.")
+        raise LoanError("Chỉ có thể gia hạn sách đang trong thời hạn mượn.")
+
+    # 5. Phải có hạn trả hợp lệ
+    if not loan.due_date:
+        raise LoanError("Lượt mượn chưa có hạn trả hợp lệ, không thể gia hạn.")
+
+    # 6. Không gia hạn khi đã quá hạn
     if loan.is_overdue:
-        raise LoanError("Sách đã quá hạn quy định nên không thể gia hạn. Vui lòng mang sách hoàn trả tại quầy thư viện.")
+        raise LoanError("Sách đã quá hạn, vui lòng trả sách tại thư viện.")
+
+    # 7. Kiểm tra số lần gia hạn
     max_renewals = _cfg("MAX_RENEWALS", 1)
-    if loan.renew_count >= max_renewals:
-        raise LoanError(f"Bạn đã sử dụng hết số lần gia hạn cho phép ({max_renewals} lần) đối với cuốn sách này.")
+    current_renewals = loan.renew_count or 0
+    if current_renewals >= max_renewals:
+        raise LoanError(f"Bạn đã sử dụng hết số lần gia hạn ({max_renewals} lần).")
 
+    # 8. Tính hạn trả mới theo cấu hình: mặc định thêm 7 ngày
     renew_days = _cfg("RENEW_DAYS", 7)
-    loan.due_date += timedelta(days=renew_days)
-    loan.renew_count += 1
+    new_due_date = loan.due_date + timedelta(days=renew_days)
+
+    # 9. Cập nhật lượt mượn và phiếu mượn liên quan
+    loan.due_date = new_due_date
+    loan.renew_count = current_renewals + 1
     if loan.slip:
-        loan.slip.due_date = loan.due_date
-    db.session.commit()
+        loan.slip.due_date = new_due_date
+
+    # 10. Lưu dữ liệu
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
+
+    return loan
 
 
-def pay_fine(loan):
-    """Xác nhận thu tiền phạt từ độc giả."""
-    if not loan.fine_amount or loan.fine_paid:
-        raise LoanError("Lượt mượn này không có khoản tiền phạt nào cần ghi nhận thu.")
+def pay_fine(loan, admin):
+    """Ghi nhận thu tiền phạt và lưu lịch sử giao dịch."""
+    if not admin.is_admin:
+        raise LoanError("Bạn không có quyền thu tiền phạt.")
+
+    if not loan.fine_amount or loan.fine_amount <= 0:
+        raise LoanError("Lượt mượn này không có khoản tiền phạt cần thu.")
+
+    if loan.fine_paid:
+        raise LoanError("Khoản tiền phạt này đã được thanh toán trước đó.")
+
+    payment = FinePayment(
+        loan_id=loan.id,
+        amount=loan.fine_amount,
+        paid_at=datetime.now(),
+        collector_id=admin.id,
+    )
     loan.fine_paid = True
-    db.session.commit()
+    db.session.add(payment)
+
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
+
+    return payment

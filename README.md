@@ -131,7 +131,7 @@ library/
 | Presentation (FE) | `frontend/templates/`, `frontend/static/` | Giao diện Jinja2 & Design System riêng mượt mà, responsive |
 | Controller (BE) | `backend/app/blueprints/` | Nhận request, xác thực RBAC, điều hướng dữ liệu |
 | Service (BE) | `backend/app/services/` | Xử lý toàn bộ logic nghiệp vụ, giao dịch mượn/trả/phạt |
-| Model / Data (BE) | `backend/app/models.py` | Thực thể SQLAlchemy ORM: User, Category, Book, BookCopy, LoanSlip, Loan, CartItem |
+| Model / Data (BE) | `backend/app/models.py` | Thực thể SQLAlchemy ORM: User, Category, Book, BookCopy, LoanSlip, Loan, CartItem, FinePayment |
 | Database | `backend/instance/library.db` | CSDL SQLite nạp sẵn dữ liệu phong phú, kích hoạt Foreign Keys |
 
 Bảo mật: băm mật khẩu (werkzeug), RBAC (`admin_required` decorator), CSRF token (Flask-WTF), ORM chống SQL Injection, Jinja2 auto-escape chống XSS, kích hoạt Foreign Keys SQLite (`PRAGMA foreign_keys=ON`), security headers (`nosniff`, `DENY`), chống open-redirect, cookie `HttpOnly`/`SameSite=Lax`.
@@ -141,6 +141,7 @@ Bảo mật: băm mật khẩu (werkzeug), RBAC (`admin_required` decorator), CS
 ```
 User (1) ── (n) CartItem (n) ── (1) Book
 User (1) ── (n) LoanSlip (1) ── (n) Loan (n) ── (1) BookCopy (n) ── (1) Book (n) ── (1) Category
+Loan (1) ── (n) FinePayment (n) ── (1) User (thủ thư thu phạt)
 LoanSlip.processed_by → User  (thủ thư duyệt/giao)
 ```
 
@@ -163,7 +164,7 @@ LoanSlip.processed_by → User  (thủ thư duyệt/giao)
 * **Quản lý sách & Bản sao:** Thêm/sửa sách, đặt giá bìa, quản lý danh sách mã vạch từng cuốn, ẩn/hiện lưu hành.
 * **Quản lý thể loại:** Thêm, xóa và **đổi tên thể loại**.
 * **Quản lý độc giả:** Phân trang, tìm kiếm, tạo tài khoản độc giả mới, đặt lại mật khẩu (reset password), khóa/mở khóa tài khoản.
-* **Quản lý tiền phạt:** Lọc Đã thu / Chưa thu, tìm kiếm, thu tiền phạt.
+* **Quản lý tiền phạt:** Lọc Đã thu / Chưa thu, tìm kiếm, thu tiền phạt tại quầy (tự động tạo giao dịch FinePayment và chống thu phạt trùng lặp).
 
 **REST API JSON (`/api/v1/`):**
 * `GET /api/v1/books`: Danh sách sách (hỗ trợ phân trang, tìm kiếm, lọc thể loại).

@@ -462,5 +462,6 @@ def fine_pay(loan_id):
         loan_service.pay_fine,
         "Đã xác nhận thu tiền phạt thành công từ độc giả.",
         request.referrer or url_for("admin.fines"),
-        _loan(loan_id)
+        _loan(loan_id),
+        current_user
     )
