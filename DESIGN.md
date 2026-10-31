@@ -1,381 +1,128 @@
-# Anthropic — Style Reference
-> scientific field journal on warm parchment — quiet ivory surfaces, editorial serif headlines, and a single clay accent that only appears when you must act
-
-**Theme:** light
-
-Source measurements are normalized; roles and recommendations are interpreted. Font summary lists are independent, not paired by position. HTML examples are reconstructions, not source components.
-
-Anthropic's interface reads like a curated research publication on warm parchment paper. Ivory and oat neutrals replace the typical cool-gray tech palette, giving every surface a paper-like quality that pairs with a custom serif used at unprecedented scale for both body and display text. A single clay-toned accent surfaces only at moments of action; everything else stays quiet and editorial. Components are flat — hairline borders and selective bottom-corner radii replace shadows as the elevation language, sans-serif handles UI chrome, and the serif carries voice.
-
-## Tokens — Colors
-
-| Name | Value | Token | Role |
-|------|-------|-------|------|
-| Slate Dark | `#141413` | `--color-slate-dark` | Primary text, headings, footer background, hairline borders — near-black with a hint of warmth, never pure black |
-| Ivory Medium | `#f0eee6` | `--color-ivory-medium` | Page canvas and large surface fills — the parchment background that sets the entire warm tone |
-| Ivory Light | `#faf9f5` | `--color-ivory-light` | Card surfaces, elevated panels, skip-link buttons — one step brighter than canvas for subtle layering without shadows |
-| Cloud Medium | `#b0aea5` | `--color-cloud-medium` | Muted helper text, inactive nav items, secondary labels — the neutral that recedes without disappearing |
-| Cloud Dark | `#87867f` | `--color-cloud-dark` | Outlined button borders, mid-contrast dividers |
-| Stone | `#cccbc8` | `--color-stone` | Hairline borders and dividers between sections — visible but never assertive |
-| Slate Medium | `#3d3d3a` | `--color-slate-medium` | Dark-on-dark borders inside the footer |
-| Oat Warm | `#e3dacc` | `--color-oat-warm` | Secondary warm surface for grouped panels and feature containers — a deeper paper tone for variety |
-| Manilla | `#f5e3c7` | `--color-manilla` | Featured hero card background — vintage paper tone that signals editorial importance without color shouting |
-| Clay | `#d97757` | `--color-clay` | Filled CTA buttons (e.g. cookie consent accept) — the single chromatic accent in the system, a terracotta warmth that belongs to the earth-tone family rather than typical UI blue |
-| Clay Deep | `#c6613f` | `--color-clay-deep` | Hover/pressed state for Clay CTAs and the canonical accent token — deeper version of the primary accent |
+# Đặc tả Thiết kế Hệ thống Giao diện (Design System Specification)
+> **Thư viện NEU** – Hệ thống quản lý mượn trả sách đại học với phong cách Modern Academic SaaS: giao diện sáng sủa, các góc bo mềm mại, hiệu ứng chuyển màu rực rỡ (Blue & Violet Gradients), hỗ trợ đầy đủ Dark Mode và tương tác mượt mà trên mọi thiết bị.
+
+---
+
+## 1. Triết lý Thiết kế (Design Philosophy)
+
+Giao diện hệ thống Thư viện NEU được xây dựng theo ngôn ngữ **Modern Academic SaaS**, kết hợp giữa tính học thuật trang nhã và trải nghiệm sản phẩm số hiện đại:
+- **Tập trung vào nội dung & thị giác:** Tựa sách, bìa sách, trạng thái lưu thông và thời hạn mượn được ưu tiên hiển thị nổi bật với trực quan hóa bằng thanh đo (Meters), nhãn trạng thái (Status Badges) và biểu đồ tròn (Donut Chart).
+- **Màu sắc cảm xúc & có chủ đích:** Tông màu xanh hoàng gia (Royal Blue `#2563EB`) kết hợp tím hiện đại (Violet `#7C3AED`) tạo cảm giác chuyên nghiệp, năng động. Các gam màu cảnh báo (Xanh lá, Hổ phách, Đỏ hoa hồng) được sử dụng chính xác theo trạng thái nghiệp vụ.
+- **Tương tác có chiều sâu (Depth & Motion):** Kính mờ (Glassmorphism), bóng đổ mềm mang ánh xanh (`rgba(37, 99, 235, 0.25)`), hiệu ứng nghiêng 3D (Tilt) khi rê chuột vào bìa sách, và chuyển cảnh mượt mà với đường cong chuẩn cubic-bezier (`.22, 1, .36, 1`).
+- **Hỗ trợ giao diện sáng/tối (Dual Theme):** Tối ưu hóa độ tương phản cho cả chế độ Sáng (Light Mode) và chế độ Ban đêm (Dark Mode), lưu trạng thái qua `localStorage`.
+
+---
+
+## 2. Hệ thống Token Thiết kế (Design Tokens)
+
+### 2.1. Bảng màu (Color Palette)
+
+| Tên Token | Chế độ Sáng (Light) | Chế độ Tối (Dark) | Ý nghĩa & Vai trò sử dụng |
+|:---|:---:|:---:|:---|
+| `--bg` | `#f4f7fe` | `#0a0f1f` | Nền canvas toàn trang |
+| `--surface` | `#ffffff` | `#111933` | Bề mặt Card, Header, Modal, Bảng dữ liệu |
+| `--surface-2` | `#f8faff` | `#0e1630` | Bề mặt lớp thứ hai, hover hàng bảng |
+| `--text` | `#0f172a` | `#e8edf9` | Màu chữ chính, độ tương phản cao |
+| `--muted` | `#64748b` | `#97a3bf` | Màu chữ phụ, mô tả, nhãn phụ, ngày tháng |
+| `--line` | `#e3e9f5` | `#222d4d` | Đường viền ngăn cách mảnh (Hairline borders) |
+| `--primary` | `#2563eb` | `#4f8bff` | Màu thương hiệu chủ đạo (Royal Blue) |
+| `--primary-600` | `#1d4ed8` | `#3b76ee` | Trạng thái hover/active của nút chính |
+| `--primary-soft` | `#e8f0ff` | `#16254d` | Nền chip, badge và hover thanh điều hướng |
+| `--accent` | `#7c3aed` | `#a78bfa` | Màu tím bổ trợ cho gradient và điểm nhấn |
+| `--success` | `#16a34a` | `#34d399` | Sách sẵn sàng, trả thành công, nút hành động an toàn |
+| `--success-soft`| `#e7f8ee` | `#0f2a22` | Nền nhãn "Sẵn sàng", "Đã trả", toast thành công |
+| `--warn` | `#d97706` | `#fbbf24` | Cảnh báo hạn trả, chờ duyệt, sắp hết sách |
+| `--warn-soft` | `#fff4de` | `#2d2410` | Nền nhãn "Chờ duyệt", cảnh báo nợ phạt |
+| `--danger` | `#e11d48` | `#fb7185` | Quá hạn, hư hỏng, báo mất, số tiền phạt |
+| `--danger-soft` | `#ffe8ed` | `#33141c` | Nền nhãn "Quá hạn", nút xoá, cảnh báo nguy hiểm |
+
+### 2.2. Bảng font chữ & Typography
+
+Hệ thống sử dụng tổ hợp 2 phông chữ tiêu chuẩn quốc tế có hỗ trợ tiếng Việt hoàn hảo:
+* **Display Font (Tiêu đề & Thương hiệu):** `'Plus Jakarta Sans', 'Be Vietnam Pro', system-ui, sans-serif`
+  - Nét chữ hiện đại, hình học, nét dày `800` mang lại diện mạo dứt khoát và ấn tượng.
+* **Body Font (Nội dung văn bản):** `'Be Vietnam Pro', 'Plus Jakarta Sans', system-ui, sans-serif`
+  - Tối ưu hóa riêng cho hiển thị dấu tiếng Việt rõ ràng, dễ đọc trong các đoạn văn và bảng biểu.
+* **Monospace Font (Mã vạch, Mã phiếu):** `ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`
+  - Đảm bảo các ký tự mã vạch (Barcode: `BC...`) và mã phiếu (`PM-...`) hiển thị chuẩn xác, thẳng hàng.
+
+| Cấp bậc | Font | Kích thước | Chiều cao dòng | Độ đậm | Letter Spacing |
+|:---|:---|:---:|:---:|:---:|:---:|
+| **Hero Display** | Display | 2.2rem – 3.8rem | 1.15 | 800 | -0.03em |
+| **Page Title (H1)** | Display | 1.6rem – 2.2rem | 1.20 | 800 | -0.02em |
+| **Section Head (H2)** | Display | 1.5rem – 2.1rem | 1.20 | 800 | -0.02em |
+| **Card Head (H3)** | Display | 1.05rem – 1.25rem | 1.30 | 700 | -0.01em |
+| **Body Base** | Body | 0.94rem – 1.00rem | 1.60 | 400 / 500 | 0 |
+| **Body Small / Muted** | Body | 0.85rem – 0.88rem | 1.50 | 400 | 0 |
+| **Badge / Caption** | Body | 0.72rem – 0.76rem | 1.20 | 700 | +0.02em |
+
+### 2.3. Bo góc (Border Radius) & Khối hình
+
+* **Pill Shape (`999px`):** Dùng cho Buttons, Badges, Filter Chips, Nav Links, Thanh tìm kiếm nhanh.
+* **Card Large (`18px` – `--radius`):** Dùng cho các Card sách, Panel quản trị, Bảng dữ liệu.
+* **Container Hero & CTA (`32px`):** Dùng cho khối Hero giới thiệu và Banner kêu gọi hành động.
+* **Form Controls (`12px` – `--radius-sm`):** Dùng cho Inputs, Select, Textarea, Phân trang Pager.
+
+### 2.4. Đổ bóng (Elevations & Shadows)
+
+* `--shadow-sm`: `0 1px 2px rgba(15,23,42,.05), 0 2px 8px rgba(15,23,42,.04)` (Thẻ tĩnh, viền nhẹ)
+* `--shadow`: `0 10px 30px -10px rgba(37,99,235,.25), 0 4px 12px rgba(15,23,42,.06)` (Thẻ khi hover, nút bấm)
+* `--shadow-lg`: `0 30px 60px -20px rgba(37,99,235,.35)` (Hero banner, Modal, Toast notification)
+
+---
+
+## 3. Các Thành phần Giao diện Chuẩn (Components)
+
+### 3.1. Thanh điều hướng đầu trang (Glassmorphic Navbar)
+* **Hiệu ứng:** Cố định (`sticky`), nền kính mờ (`backdrop-filter: blur(14px)`), tự động thêm viền mảnh khi cuộn trang.
+* **Logo:** Biểu tượng sách nổi bật với góc xoay nhẹ trên nền gradient xanh-tím (`135deg`).
+* **Menu điều hướng:** Các pill links bo tròn, nổi bật với màu nền mềm (`--primary-soft`) khi đang ở trang hiện tại.
+* **Công cụ:** Nút đổi theme Sáng/Tối (`theme-toggle`), giỏ mượn sách có chấm đỏ hiển thị số lượng (`cart-pill`), avatar người dùng và nút chuyển nhanh vào Quản trị (đối với thủ thư).
+
+### 3.2. Khối Hero & Tra cứu trực tiếp (Live Instant Search)
+* **Hiệu ứng thị giác:** Hai khối gradient mềm chuyển động ngẫu nhiên (`.blob.b1`, `.blob.b2`) cùng tiêu đề chữ chuyển màu óng ánh (`.gradient-text`).
+* **Thanh tìm kiếm:** Pill search bar lớn với icon kính lúp, tích hợp ô gợi ý kết quả trực tiếp (Live Suggest dropdown) hiển thị ảnh thu nhỏ, tựa sách và tác giả khi gõ phím.
+* **Hình ảnh nổi 3D:** 3 bìa sách nghệ thuật đặt chéo góc với chuyển động bập bênh (`animation: bob`) tạo chiều sâu.
+
+### 3.3. Thẻ sách & Bìa sách nghệ thuật (Book Cards & Covers)
+* **Bìa sách thật:** Nếu có `cover_url`, hiển thị ảnh chất lượng cao theo tỉ lệ vàng $2:3$, tự động chuyển sang chế độ dự phòng nếu ảnh bị lỗi (`onerror`).
+* **Bìa sách đồ họa tự sinh (Fallback CSS Covers):** Nếu sách chưa có ảnh bìa, hệ thống dùng thuật toán gradient theo chuyên mục (`.c0` đến `.c5`) với gáy sách dập bóng nổi và tên sách co dãn tự động theo kích thước vùng chứa (`container-type: inline-size`).
+* **Hiệu ứng 3D Tilt:** Khi người dùng rê chuột lên thẻ sách, thẻ sách nghiêng theo góc chuột (`data-tilt="6"`) kèm vệt sáng phản quang.
+* **Thanh tồn kho thông minh (`.meter`):** Hiển thị số lượng sách sẵn sàng dưới dạng thanh đo màu:
+  - Màu xanh lá: Sách dồi dào ($> 1$ bản).
+  - Màu hổ phách nhấp nháy: Sách sắp hết (chỉ còn $1$ bản).
+  - Màu đỏ: Hết bản sao vật lý trong kho ($0$ bản).
+
+### 3.4. Hệ thống Quản trị Thư viện (Librarian Admin Portal)
+* **Sidebar điều hướng:** Thanh điều hướng cố định bên trái với các mục chức năng có icon SVG chuyên biệt, mục đang chọn được phủ dải màu Gradient rực rỡ và bóng đổ nổi bật.
+* **Bảng điều khiển (Dashboard):**
+  - Biểu đồ Donut CSS: Thống kê trạng thái kho sách (Hiển thị **99.7% Sẵn sàng** / Đang mượn).
+  - Thanh đo Top sách mượn nhiều & Độc giả tích cực: Gradient chuyển sắc tím sang xanh.
+* **Quản lý Thể loại:** Tối ưu hóa layout chia 2 cột: Bảng danh sách bên trái (co dãn linh hoạt, chống tràn thanh cuộn ngang `min-width: 0`) và Form tạo thể loại mới cố định bên phải.
+* **Quản lý Tiền phạt & Mượn trả:** Bảng dữ liệu có phân trang, nhãn trạng thái trực quan, tích hợp nút xác nhận thu tiền phạt tại quầy kèm lưu vết giao dịch `FinePayment`.
 
-## Tokens — Typography
+### 3.5. Thông báo Toast & Hộp thoại xác nhận (Toasts & Modals)
+* **Toasts:** Xuất hiện ở góc trên bên phải màn hình, có âm hưởng màu theo ngữ cảnh (Thành công, Cảnh báo, Lỗi), đi kèm thanh đếm ngược thời gian hiển thị (`5 giây`).
+* **Modals:** Hộp thoại xác nhận trung tâm màn hình với nền làm mờ (`backdrop-filter: blur(4px)`), dùng cho các tác vụ quan trọng như duyệt mượn, từ chối, đặt lại mật khẩu độc giả.
 
-### Anthropic Serif — Editorial voice — used for the display heading at 68px, all body copy at 20px, card titles, and supporting paragraphs. The serif carries personality; its presence in body text (unusual for tech sites) signals research-publication DNA. Weight 400 is default, 600 for emphasis. · `--font-anthropic-serif`
-- **Substitute:** Georgia, Source Serif Pro, Charter
-- **Weights:** 400, 600
-- **Sizes:** 14px, 18px, 20px, 24px, 68px
-- **Line height:** 1.10, 1.40, 1.43
-- **Letter spacing:** normal
-- **Role:** Editorial voice — used for the display heading at 68px, all body copy at 20px, card titles, and supporting paragraphs. The serif carries personality; its presence in body text (unusual for tech sites) signals research-publication DNA. Weight 400 is default, 600 for emphasis.
+### 3.6. Chế độ In ấn tối ưu (`@media print`)
+* Tự động ẩn toàn bộ thanh Navbar, Sidebar, Footer, To-top button và các nút thao tác khi in phiếu mượn (`slip_detail.html`), mang lại bản in phiếu sắc nét, chuẩn trang giấy $A4$/$A5$.
 
-### Anthropic Sans — UI chrome and display sans — nav links, buttons, footers, badges, and the bold sans display heading at 61px weight 700. The 61px sans display sits beside the 68px serif display as a deliberate dual-system: sans shouts declarative statements, serif reads as editorial essay. · `--font-anthropic-sans`
-- **Substitute:** Inter, system-ui, Arial
-- **Weights:** 400, 500, 600, 700
-- **Sizes:** 12px, 15px, 16px, 20px, 24px, 61px
-- **Line height:** 1.00, 1.10, 1.25, 1.30, 1.40
-- **Letter spacing:** -0.0200em at 12px (tight nav/caption tracking), -0.0050em at 15-16px (subtle UI tightening), -0.0020em at larger sizes
-- **Role:** UI chrome and display sans — nav links, buttons, footers, badges, and the bold sans display heading at 61px weight 700. The 61px sans display sits beside the 68px serif display as a deliberate dual-system: sans shouts declarative statements, serif reads as editorial essay.
+---
 
-### Anthropic Mono — Reserved for code or technical snippets — appears sparingly · `--font-anthropic-mono`
-- **Substitute:** JetBrains Mono, SF Mono, Menlo
-- **Weights:** 400
-- **Sizes:** 16px
-- **Line height:** 1.40
-- **Role:** Reserved for code or technical snippets — appears sparingly
+## 4. Bố cục & Trải nghiệm Tương thích (Responsive Grid)
 
-### Type Scale
+| Breakpoint | Mục tiêu thiết bị | Cấu hình bố cục chính |
+|:---:|:---|:---|
+| **$< 640px$** | Điện thoại di động | Grid sách 1 cột; Navbar chuyển sang menu trượt; Bảng dữ liệu cuộn ngang độc lập |
+| **$640px – 900px$** | Máy tính bảng (Tablet) | Grid sách 2 cột; Hero ẩn bìa 3D để tập trung vào tìm kiếm; Sidebar admin chuyển thành thanh cuộn ngang |
+| **$900px – 1280px$** | Laptop & Màn hình vừa | Grid sách 3–4 cột; Sidebar admin cố định 240px; Chi tiết sách chia 2 cột (340px / 1fr) |
+| **$> 1280px$** | Màn hình lớn (Desktop) | Container tối đa 1180px căn giữa; Thẻ sách dàn 4 cột cân đối; Khoảng đệm thoáng đãng |
 
-| Role | Family | Weight | Size | Line Height | Letter Spacing | Token |
-|------|--------|--------|------|-------------|----------------|-------|
-| caption | — | — | 12px | 1.4 | -0.24px | `--text-caption` |
-| body-sm | — | — | 16px | 1 | -0.08px | `--text-body-sm` |
-| body | — | — | 20px | 1.4 | 0px | `--text-body` |
-| subheading | — | — | 24px | 1.3 | -0.05px | `--text-subheading` |
-| heading | — | — | 61px | 1.1 | -0.12px | `--text-heading` |
-| display | — | — | 68px | 1.1 | 0px | `--text-display` |
+---
 
-## Tokens — Spacing & Shapes
+## 5. Quy chuẩn Viết Code & Mở rộng (Style Guidelines)
 
-**Base unit:** 4px
-
-**Density:** compact
-
-### Spacing Scale
-
-| Name | Value | Token |
-|------|-------|-------|
-| 4 | 4px | `--spacing-4` |
-| 8 | 8px | `--spacing-8` |
-| 12 | 12px | `--spacing-12` |
-| 16 | 16px | `--spacing-16` |
-| 24 | 24px | `--spacing-24` |
-| 32 | 32px | `--spacing-32` |
-| 76 | 76px | `--spacing-76` |
-| 100 | 100px | `--spacing-100` |
-
-### Border Radius
-
-| Element | Value |
-|---------|-------|
-| nav | 0px |
-| cards | 24px |
-| links | 0px |
-| badges | 0px |
-| buttons | 8px (bottom-only on filled variants), 12px (outlined) |
-
-### Layout
-
-- **Page max-width:** 1280px
-- **Section gap:** 80-120px
-- **Card padding:** 24-32px
-- **Element gap:** 8px
-
-## Components
-
-### Text Link Button
-**Role:** Primary inline link styled as a button — used for navigation and inline actions
-
-Transparent background, #141413 text color, no border, 0px radius, padding 22px 12px. Underline appears on hover. No background fill at any state — this is text that happens to be clickable, not a container.
-
-### Filled Ivory Button
-**Role:** Primary action button on light surfaces
-
-Background #faf9f5, text #141413, bottom-only border-radius 8px (top corners sharp), padding 12px 31px. The bottom-only radius is a signature choice — the button reads like a tab or card pulled from a stack, not a generic pill. No border, no shadow.
-
-### Outlined Dark Button
-**Role:** Secondary action on dark backgrounds (cookie consent, modal footer)
-
-Transparent background, #ffffff text, 1px border in #87867f, 12px radius, padding 8px 16px. Compact size, ghost treatment that lets the dark background show through.
-
-### Clay Filled Button
-**Role:** The single chromatic CTA — used sparingly for the most consequential actions
-
-Background #d97757, white text, 8px radius, padding matching Filled Ivory Button proportions. Reserved for moments where acceptance must be visually distinct from the rest of the editorial interface. Deepens to #c6613f on hover.
-
-### Featured Hero Card
-**Role:** Large editorial card for announcements and story highlights
-
-Background #f5e3c7 (manilla), 24px border-radius, no shadow, no border. Generous internal padding (~48-64px) to accommodate large serif display text and editorial illustration. The warm paper tone separates it from ivory cards without using color.
-
-### Release Card
-**Role:** Compact card for latest releases grid
-
-Background #faf9f5, 24px radius, 1px border in #cccbc8 or no border, padding ~24px. Title in Anthropic Sans 24px weight 600 or Anthropic Serif 20px, body in serif 20px. Three-column grid layout.
-
-### Top Navigation Bar
-**Role:** Sticky site navigation
-
-Transparent or #f0eee6 background, logo left in Anthropic Sans 12px weight 700 all-caps letter-spaced, nav links right-aligned at 12px sans with #b0aea5 hover-to-#141413 transition. Dropdown indicators as chevrons. The 'Try Claude' button on the right uses Filled Ivory Button styling. No background blur, no shadow.
-
-### Footer
-**Role:** Dark closing section with link columns
-
-Full-bleed #141413 background, #faf9f5 text, multi-column link grid with 8px link gaps. Section headings in sans 12px weight 600, link items in sans 12px at #b0aea5. The dark footer is the only inversion in the system — a final grounded anchor after all the parchment above.
-
-### Hero Heading Block
-**Role:** Asymmetric first-screen composition
-
-Two-column layout: left holds Anthropic Sans 61px weight 700 heading with inline underlined links mid-phrase; right holds supporting serif paragraph at 20px. Generous whitespace around the block. Headings use #141413, supporting text #141413 at reduced visual weight.
-
-### Inline Underlined Link
-**Role:** Text link embedded in paragraphs and headings
-
-No background, text inherits parent color (#141413), 1px underline always visible (not just on hover) in #141413. The persistent underline is editorial — it matches print convention where links are typeset with underlines, not the UI convention of reveal-on-hover.
-
-### Badge / Inline Label
-**Role:** Small tag for categories and metadata
-
-Transparent background, #141413 text, 0px radius, no padding above/below the text baseline. Effectively just bold or weighted text in flow — not a container. Used sparingly.
-
-### Cookie Consent Bar
-**Role:** Bottom-pinned consent prompt
-
-Dark band (#141413 background) or dark overlay containing body text and three action buttons: Filled Ivory Button (Accept), Outlined Dark Button (Customize, Reject). The contrast inversion makes consent legible against the parchment above.
-
-### Skip Link
-**Role:** Accessibility utility for keyboard navigation
-
-Background #faf9f5, text #141413, small padding, visible only on focus. Positioned absolutely at the top edge.
-
-## Do's and Don'ts
-
-### Do
-- Use Anthropic Serif at 20px for all body copy and Anthropic Sans at 12-16px for UI chrome — the serif/sans split defines the system's voice.
-- Use #f0eee6 as the page canvas and #faf9f5 for cards; reach for #f5e3c7 only when a card needs to feel like a featured editorial spread.
-- Use the bottom-only 8px radius on filled buttons (Filled Ivory Button); this signature corner treatment replaces the generic pill.
-- Use #d97757 Clay exclusively for the most consequential single CTA on any given page; never apply it to multiple actions or decorative elements.
-- Keep underlines persistent on inline links — editorial print convention, not reveal-on-hover.
-- Reach for 24px radius on all card-level surfaces to maintain the paper-stacked feel.
-- Use the 61px sans weight 700 paired with the 68px serif weight 400 as the dual display system — sans for declarative statements, serif for editorial reflection.
-
-### Don't
-- Don't introduce cool grays, blues, or any color outside the warm earth-tone family — the palette is ivory/oat/clay, period.
-- Don't use box-shadow for elevation — this system elevates through surface tone (#f0eee6 → #faf9f5 → #f5e3c7) and 1px borders only.
-- Don't use the Clay accent for decoration, icons, hover states, or non-CTA elements; reserve #d97757 for filled action buttons only.
-- Don't set body text in sans-serif — body must be serif at 20px; sans is UI chrome only.
-- Don't apply uniform border-radius to buttons; the bottom-only 8px is a signature, not a default that should be rounded everywhere.
-- Don't use bright white (#ffffff) as a surface — the system is ivory-tinted throughout (#faf9f5, #f0eee6, #f5e3c7); pure white would feel clinical and break the paper metaphor.
-- Don't add gradients, glows, or color washes to backgrounds; surfaces are flat solid fills only.
-
-## Surfaces
-
-| Level | Name | Value | Purpose |
-|-------|------|-------|---------|
-| 0 | Canvas | `#f0eee6` | Page-level background — the parchment that everything sits on |
-| 1 | Card Surface | `#faf9f5` | Standard card and elevated panel — one tonal step above canvas |
-| 2 | Warm Feature Surface | `#f5e3c7` | Featured hero card and editorial highlights — manilla paper tone for visual emphasis |
-| 3 | Deep Warm Surface | `#e3dacc` | Secondary grouped panels and deeper warm containers |
-| 4 | Inversion Surface | `#141413` | Footer and dark utility bands — the only dark surface in the system |
-
-## Elevation
-
-- **Card:** `none — elevated through surface tone shift, not shadow`
-- **Button:** `none — identity through fill color and bottom-corner radius`
-- **Navigation:** `none — flat, relies on tonal difference from page canvas`
-
-## Imagery
-
-Imagery leans heavily into vintage scientific illustration: the hero feature card contains a dense botanical/zoological collage of butterflies and moths rendered in classic naturalist plate style, evoking 19th-century field guides. Illustrations are warm-toned to harmonize with the parchment background rather than pop against it. No photography, no product screenshots, no abstract gradients. Iconography is minimal — small chevrons for dropdowns and sparse line indicators, always in the same warm-neutral family as text. The visual density is low: large blocks of text and whitespace dominate, with imagery appearing only at hero-feature scale.
-
-## Agent Prompt Guide
-
-## Quick Color Reference
-- text: #141413 (Slate Dark)
-- background: #f0eee6 (Ivory Medium)
-- card surface: #faf9f5 (Ivory Light)
-- border: #cccbc8 (Stone)
-- muted text: #b0aea5 (Cloud Medium)
-- primary action: #d97757 (filled action)
-
-## Example Component Prompts
-
-1. **Hero section**: Canvas #f0eee6. Left column: headline at 61px Anthropic Sans weight 700, #141413, letter-spacing -0.12px. Inline links within the headline underlined persistently in #141413. Right column: supporting paragraph at 20px Anthropic Serif weight 400, #141413. Two-column layout, max-width 1280px centered, generous vertical padding (~120px top).
-
-2. Create a Primary Action Button: #d97757 background, #141413 text, 9999px radius, compact pill padding. Use this filled treatment for the main CTA.
-
-3. **Three-column release grid**: Three cards on #f0eee6 canvas, each card #faf9f5 with 24px radius and 24px padding. Card title at 24px Anthropic Sans weight 600, #141413. Card body at 20px Anthropic Serif weight 400, #141413. Inline link at bottom: 'Model details →' in #141413 with persistent underline.
-
-
-5. **Dark footer**: Full-bleed #141413 background, #faf9f5 text, max-width 1280px content centered. Column headings at 12px Anthropic Sans weight 600, #faf9f5. Link items at 12px sans weight 400, #b0aea5 with 8px vertical gaps.
-
-## Similar Brands
-
-- **Arc Browser** — Same warm parchment neutrals and nature-inspired accent palette, editorial type treatment, and rejection of cold tech-blue UI conventions
-- **Stripe** — Editorial documentation aesthetic with serif body text paired with sans UI, warm grays instead of cool blues, and section-based max-width reading layout
-- **Notion** — Type-driven minimal interface where typography carries hierarchy more than color or shadow, generous whitespace, restrained palette
-- **Linear** — Monochrome restraint and the discipline of using a single accent color only at decisive action moments
-- **Cursor** — Contemporary AI-product visual language with custom sans + serif type pairing and minimal decorative chrome
-
-## Quick Start
-
-### CSS Custom Properties
-
-```css
-:root {
-  /* Colors */
-  --color-slate-dark: #141413;
-  --color-ivory-medium: #f0eee6;
-  --color-ivory-light: #faf9f5;
-  --color-cloud-medium: #b0aea5;
-  --color-cloud-dark: #87867f;
-  --color-stone: #cccbc8;
-  --color-slate-medium: #3d3d3a;
-  --color-oat-warm: #e3dacc;
-  --color-manilla: #f5e3c7;
-  --color-clay: #d97757;
-  --color-clay-deep: #c6613f;
-
-  /* Typography — Font Families */
-  --font-anthropic-serif: 'Anthropic Serif', ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  --font-anthropic-sans: 'Anthropic Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-anthropic-mono: 'Anthropic Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-
-  /* Typography — Scale */
-  --text-caption: 12px;
-  --leading-caption: 1.4;
-  --tracking-caption: -0.24px;
-  --text-body-sm: 16px;
-  --leading-body-sm: 1;
-  --tracking-body-sm: -0.08px;
-  --text-body: 20px;
-  --leading-body: 1.4;
-  --tracking-body: 0px;
-  --text-subheading: 24px;
-  --leading-subheading: 1.3;
-  --tracking-subheading: -0.05px;
-  --text-heading: 61px;
-  --leading-heading: 1.1;
-  --tracking-heading: -0.12px;
-  --text-display: 68px;
-  --leading-display: 1.1;
-  --tracking-display: 0px;
-
-  /* Typography — Weights */
-  --font-weight-regular: 400;
-  --font-weight-medium: 500;
-  --font-weight-semibold: 600;
-  --font-weight-bold: 700;
-
-  /* Spacing */
-  --spacing-unit: 4px;
-  --spacing-4: 4px;
-  --spacing-8: 8px;
-  --spacing-12: 12px;
-  --spacing-16: 16px;
-  --spacing-24: 24px;
-  --spacing-32: 32px;
-  --spacing-76: 76px;
-  --spacing-100: 100px;
-
-  /* Layout */
-  --page-max-width: 1280px;
-  --section-gap: 80-120px;
-  --card-padding: 24-32px;
-  --element-gap: 8px;
-
-  /* Border Radius */
-  --radius-lg: 8px;
-  --radius-xl: 12px;
-  --radius-2xl: 16px;
-  --radius-3xl: 24px;
-
-  /* Named Radii */
-  --radius-nav: 0px;
-  --radius-cards: 24px;
-  --radius-links: 0px;
-  --radius-badges: 0px;
-  --radius-buttons: 8px (bottom-only on filled variants), 12px (outlined);
-
-  /* Surfaces */
-  --surface-canvas: #f0eee6;
-  --surface-card-surface: #faf9f5;
-  --surface-warm-feature-surface: #f5e3c7;
-  --surface-deep-warm-surface: #e3dacc;
-  --surface-inversion-surface: #141413;
-}
-```
-
-### Tailwind v4
-
-```css
-@theme {
-  /* Colors */
-  --color-slate-dark: #141413;
-  --color-ivory-medium: #f0eee6;
-  --color-ivory-light: #faf9f5;
-  --color-cloud-medium: #b0aea5;
-  --color-cloud-dark: #87867f;
-  --color-stone: #cccbc8;
-  --color-slate-medium: #3d3d3a;
-  --color-oat-warm: #e3dacc;
-  --color-manilla: #f5e3c7;
-  --color-clay: #d97757;
-  --color-clay-deep: #c6613f;
-
-  /* Typography */
-  --font-anthropic-serif: 'Anthropic Serif', ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  --font-anthropic-sans: 'Anthropic Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-anthropic-mono: 'Anthropic Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-
-  /* Typography — Scale */
-  --text-caption: 12px;
-  --leading-caption: 1.4;
-  --tracking-caption: -0.24px;
-  --text-body-sm: 16px;
-  --leading-body-sm: 1;
-  --tracking-body-sm: -0.08px;
-  --text-body: 20px;
-  --leading-body: 1.4;
-  --tracking-body: 0px;
-  --text-subheading: 24px;
-  --leading-subheading: 1.3;
-  --tracking-subheading: -0.05px;
-  --text-heading: 61px;
-  --leading-heading: 1.1;
-  --tracking-heading: -0.12px;
-  --text-display: 68px;
-  --leading-display: 1.1;
-  --tracking-display: 0px;
-
-  /* Spacing */
-  --spacing-4: 4px;
-  --spacing-8: 8px;
-  --spacing-12: 12px;
-  --spacing-16: 16px;
-  --spacing-24: 24px;
-  --spacing-32: 32px;
-  --spacing-76: 76px;
-  --spacing-100: 100px;
-
-  /* Border Radius */
-  --radius-lg: 8px;
-  --radius-xl: 12px;
-  --radius-2xl: 16px;
-  --radius-3xl: 24px;
-}
-```
+1. **Sử dụng CSS Custom Properties:** Mọi thành phần mới phải tái sử dụng các biến trong `:root` (như `var(--primary)`, `var(--radius)`, `var(--shadow)`), không dùng mã màu hard-code.
+2. **Không làm vỡ cấu trúc phân tách:** Toàn bộ CSS nằm trong [`frontend/static/css/style.css`](file:///c:/Users/admin/Downloads/library/library/frontend/static/css/style.css), JS tương tác nằm trong [`frontend/static/js/app.js`](file:///c:/Users/admin/Downloads/library/library/frontend/static/js/app.js).
+3. **Thân thiện với chuyển động (Reduced Motion):** Luôn tôn trọng tùy chọn của người dùng qua `@media (prefers-reduced-motion: reduce)` để tắt animation nếu người dùng có tiền sử tiền đình.
