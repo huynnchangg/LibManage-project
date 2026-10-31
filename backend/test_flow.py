@@ -473,6 +473,67 @@ with app.app_context():
     assert b_check.available_copies == init_avail, "Tồn kho không hồi phục khi bản sao sẵn sàng!"
 print("Mục 15: Chức năng sửa trạng thái bản sao hoạt động chuẩn xác và đồng bộ tồn kho.")
 
+print("--- 16. Kiểm tra phân trang và lọc trạng thái độc giả (Users filter & pager) ---")
+# Đảm bảo admin đã đăng nhập
+cl.post("/logout")
+ok(login("admin", "admin123"))
+
+# Kiểm tra trang /admin/users có hiển thị bộ lọc và tab
+resp_users = ok(cl.get("/admin/users"))
+assert "Đang hoạt động" in resp_users.get_data(as_text=True)
+assert "Bị khoá" in resp_users.get_data(as_text=True)
+
+# Khóa độc giả r2
+with app.app_context():
+    r2_user = User.query.filter_by(username="r2").first()
+    r2_id = r2_user.id
+ok(cl.post(f"/admin/users/{r2_id}/toggle", follow_redirects=True), "đã khoá")
+
+# Lọc bị khoá -> thấy r2
+resp_locked = ok(cl.get("/admin/users?status=locked"))
+assert "r2" in resp_locked.get_data(as_text=True)
+
+# Lọc hoạt động -> không thấy r2
+resp_active = ok(cl.get("/admin/users?status=active"))
+assert "Sinh viên R2" not in resp_active.get_data(as_text=True)
+
+# Mở khoá lại r2
+ok(cl.post(f"/admin/users/{r2_id}/toggle", follow_redirects=True), "đã mở khoá")
+print("Mục 16: Bộ lọc và phân trang độc giả hoạt động chính xác.")
+
+print("--- 17. Kiểm tra chống mượn trùng sách qua giỏ hàng ---")
+# Reader 1 đăng nhập
+cl.post("/logout")
+ok(login("r1", "reset123456"))
+
+# Thêm sách 1 vào giỏ
+with app.app_context():
+    # Xoá giỏ cũ nếu có
+    CartItem.query.filter_by(user_id=2).delete()
+    # Thêm thủ công 1 CartItem cho sách 1 mà reader 1 đang mượn/chờ
+    db.session.add(CartItem(user_id=2, book_id=1))
+    db.session.commit()
+
+# Checkout giỏ khi sách 1 đang trong lượt mượn -> bị chặn mượn trùng
+resp_dup_cart = cl.post("/cart/checkout", data={"note": "Test trùng"}, follow_redirects=True)
+assert "đang mượn hoặc đã gửi yêu cầu" in resp_dup_cart.get_data(as_text=True)
+
+# Dọn sạch giỏ
+cl.post("/cart/clear", follow_redirects=True)
+print("Mục 17: Hệ thống đã chặn mượn trùng thành công ở giỏ hàng.")
+
+print("--- 18. Kiểm tra tìm kiếm lưu thông theo username độc giả ---")
+cl.post("/logout")
+ok(login("admin", "admin123"))
+resp_loan_search = ok(cl.get("/admin/loans?status=all&q=r1"))
+assert "r1" in resp_loan_search.get_data(as_text=True)
+print("Mục 18: Tìm kiếm lưu thông theo username hoạt động chuẩn xác.")
+
+print("--- 19. Kiểm tra tìm kiếm tiền phạt theo username độc giả ---")
+resp_fine_search = ok(cl.get("/admin/fines?q=r1"))
+assert "r1" in resp_fine_search.get_data(as_text=True)
+print("Mục 19: Tìm kiếm tiền phạt theo username độc giả hoạt động chuẩn xác.")
+
 print("\n" + "="*50)
-print("✅ TẤT CẢ 15 PHÂN HỆ KIỂM THỬ ĐẠT 100%!")
+print("✅ TẤT CẢ 19 PHÂN HỆ KIỂM THỬ ĐẠT 100%!")
 print("="*50)

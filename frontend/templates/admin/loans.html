@@ -19,6 +19,7 @@
     ('overdue','Quá hạn'),
     ('returned','Đã trả'),
     ('rejected','Từ chối'),
+    ('cancelled','Đã huỷ'),
     ('all','Tất cả')
   ] %}
   <a class="tab {{ 'active' if status == key }}" href="{{ url_for('admin.loans', status=key, q=q or None) }}">{{ label }}</a>
@@ -87,9 +88,12 @@
           {% if l.is_overdue %}
             <div class="small" style="color:var(--danger);font-weight:600">Trễ {{ l.overdue_days }} ngày · {{ l.current_fine|vnd }}</div>
           {% endif %}
-        {% elif l.status == 'returned' %}
+        {% elif l.status in ['returned', 'damaged', 'lost'] %}
           <div class="small muted">Trả lúc:</div>
           <span>{{ l.returned_at|dt if l.returned_at else '—' }}</span>
+          {% if l.fine_amount %}
+            <div class="small font-semibold" style="color:var(--{{ 'success' if l.fine_paid else 'danger' }})">Phạt: {{ l.fine_amount|vnd }} ({{ 'Đã thu' if l.fine_paid else 'Chưa nộp' }})</div>
+          {% endif %}
         {% else %}
           <div class="small muted">Yêu cầu:</div>
           <span>{{ l.requested_at|dt }}</span>
@@ -123,10 +127,15 @@
                     data-user="{{ l.user.full_name }}"
                     data-price="{{ l.book.price }}"
                     data-overdue-days="{{ l.overdue_days }}"
-                    data-overdue-fine="{{ l.overdue_days * 5000 }}"
+                    data-overdue-fine="{{ l.current_fine }}"
                     data-barcode="{{ l.copy.barcode if l.copy else '' }}">
               {{ icon('check') }} Nhận trả
             </button>
+          {% elif l.fine_amount and not l.fine_paid %}
+            <form method="post" action="{{ url_for('admin.fine_pay', loan_id=l.id) }}" data-confirm="Xác nhận đã thu {{ l.fine_amount|vnd }} của {{ l.user.full_name }}?">
+              {{ csrf() }}
+              <button class="btn btn-success btn-sm">{{ icon('check') }} Thu phạt</button>
+            </form>
           {% endif %}
         </div>
       </td>
@@ -189,6 +198,7 @@
           <option value="75">Hư hại nặng (Phạt 75% giá bìa: ướt nhòe, mất trang)</option>
           <option value="100">Hỏng hoàn toàn / Mất sách (Bồi thường 100% giá bìa)</option>
         </select>
+        <input type="hidden" name="condition" id="return-condition" value="normal">
       </div>
 
       <div class="field mt-2">
@@ -300,6 +310,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const total = curOverdueFine + dmgFine;
       dmgDisp.textContent = fmt.format(dmgFine) + ' đ';
       totalDisp.textContent = fmt.format(total) + ' đ';
+      const condField = document.getElementById('return-condition');
+      if (condField) condField.value = pct >= 100 ? 'lost' : pct > 0 ? 'damaged' : 'normal';
     };
 
     document.querySelectorAll('.btn-open-return').forEach(b => {
@@ -335,6 +347,8 @@ document.addEventListener('DOMContentLoaded', () => {
       b.addEventListener('click', () => {
         form.action = b.dataset.action;
         desc.innerHTML = `Từ chối độc giả <b>${b.dataset.user}</b> mượn cuốn “<b>${b.dataset.book}</b>”.`;
+        const reasonInput = document.getElementById('reject-reason');
+        if (reasonInput) reasonInput.value = '';
         rejModal.classList.add('open');
       });
     });

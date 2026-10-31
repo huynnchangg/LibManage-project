@@ -191,7 +191,11 @@ def checkout_cart(user, note=""):
 
     validate_user_eligibility(user, additional_count=len(items))
 
+    current = active_loans(user)
+    current_book_ids = {l.book_id for l in current}
     for it in items:
+        if it.book_id in current_book_ids:
+            raise LoanError(f"Bạn hiện đang mượn hoặc đã gửi yêu cầu cho cuốn “{it.book.title}”. Vui lòng xóa khỏi giỏ.")
         if not it.book.is_active:
             raise LoanError(f"Ấn bản “{it.book.title}” hiện đã ngừng lưu hành. Vui lòng xóa khỏi giỏ.")
         if it.book.available_copies < 1:
@@ -311,7 +315,7 @@ def approve(loan, admin, barcode=None):
         raise LoanError(f"Sách “{book.title}” hiện đã hết bản in sẵn sàng trong kho, không thể duyệt cho mượn.")
 
     copy.status = COPY_RESERVED
-    book.available_copies = max(0, book.available_copies - 1)
+    book.sync_copies_count()  # sync dong nhat thay vi ghi thu cong (BUG-04 fix)
 
     now = datetime.now()
     pickup_hrs = _cfg("PICKUP_HOURS", 48)
@@ -389,6 +393,14 @@ def direct_checkout(admin, user, barcodes, note=""):
             raise LoanError(f"Đầu sách “{cp.book.title}” hiện đã ngừng lưu hành.")
         copies.append(cp)
 
+    # Kiểm tra không cho mượn 2 bản của cùng 1 đầu sách trong cùng phiếu (BUG-01 fix)
+    book_ids_in_list = [cp.book_id for cp in copies]
+    if len(book_ids_in_list) != len(set(book_ids_in_list)):
+        raise LoanError(
+            "Danh sách mã vạch chứa nhiều bản của cùng một đầu sách. "
+            "Mỗi đầu sách chỉ được mượn 1 bản trong một phiếu."
+        )
+
     now = datetime.now()
     due = date.today() + timedelta(days=_cfg("LOAN_DAYS", 14))
 
@@ -409,7 +421,8 @@ def direct_checkout(admin, user, barcodes, note=""):
 
     for cp in copies:
         cp.status = COPY_BORROWED
-        cp.book.available_copies = max(0, cp.book.available_copies - 1)
+        cp.book.sync_copies_count()
+        CartItem.query.filter_by(user_id=user.id, book_id=cp.book_id).delete()
         loan = Loan(
             slip_id=slip.id,
             user_id=user.id,
@@ -562,7 +575,7 @@ def renew(loan, user):
     loan.due_date = new_due_date
     loan.renew_count = current_renewals + 1
     if loan.slip:
-        loan.slip.due_date = new_due_date
+        loan.slip.due_date = max(loan.slip.due_date or new_due_date, new_due_date)
 
     # 10. Lưu dữ liệu
     try:

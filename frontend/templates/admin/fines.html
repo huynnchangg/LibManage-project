@@ -34,10 +34,24 @@
       {% if l.copy %}<div class="small muted">Mã: {{ l.copy.barcode }}</div>{% endif %}
     </td>
     <td>{{ l.returned_at|dt }}</td>
-    <td><b>{{ l.fine_amount|vnd }}</b></td>
+        <td>
+      <b>{{ l.fine_amount|vnd }}</b>
+      {% if l.fine_overdue and l.fine_damage %}
+        <div class="small muted">Trễ: {{ l.fine_overdue|vnd }} · Hại: {{ l.fine_damage|vnd }}</div>
+      {% elif l.fine_damage %}
+        <div class="small muted">Hư hại/mất ({{ l.damage_percent }}%)</div>
+      {% elif l.fine_overdue %}
+        <div class="small muted">Phạt quá hạn</div>
+      {% endif %}
+    </td>
     <td>
       {% if l.fine_paid %}
       <span class="badge badge-success">Đã thu</span>
+      {% set payment = l.fine_payments|sort(attribute='paid_at')|last if l.fine_payments else None %}
+      {% if payment %}
+      <div class="small muted">{{ payment.paid_at|dt('%d/%m/%Y %H:%M') }}</div>
+      <div class="small muted">Thu: {{ payment.collector.full_name if payment.collector else 'Thủ thư' }}</div>
+      {% endif %}
       {% else %}
       <span class="badge badge-danger">Chưa thu</span>
       {% endif %}

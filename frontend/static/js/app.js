@@ -202,7 +202,13 @@
           img.src = b.cover_url; img.alt = `Bìa sách ${b.title}`; img.loading = 'lazy';
           img.onerror = () => {
             c.className = `cover c${(rel.dataset.tone | 0)}`;
-            c.innerHTML = `<div class="cover-in"><span class="cover-cat">${b.category || 'Sách'}</span><span class="cover-title">${b.title}</span><span class="cover-author">${b.author}</span></div>`;
+            const inner = el('div', 'cover-in');
+            inner.append(
+              Object.assign(el('span', 'cover-cat'), { textContent: b.category || 'Sách' }),
+              Object.assign(el('span', 'cover-title'), { textContent: b.title }),
+              Object.assign(el('span', 'cover-author'), { textContent: b.author })
+            );
+            c.innerHTML = ''; c.append(inner);
           };
           c.append(img);
         } else {
@@ -230,9 +236,12 @@
     $$('.loan-card').forEach(c => c.classList.toggle('hide', t.dataset.filter !== 'all' && c.dataset.group !== t.dataset.filter));
   }));
   $$('.loan-card[data-due]').forEach(c => {
-    const due = new Date(c.dataset.due + 'T23:59:59'), start = new Date(c.dataset.start || Date.now()), now = new Date();
-    const days = Math.ceil((due - now) / 864e5), total = Math.max((due - start) / 864e5, 1);
-    const pct = Math.min(100, Math.max(0, ((now - start) / 864e5 / total) * 100));
+    const dDue = new Date(c.dataset.due + 'T00:00:00');
+    const dNow = new Date(); dNow.setHours(0, 0, 0, 0);
+    const days = Math.round((dDue - dNow) / 864e5);
+    const start = new Date(c.dataset.start || Date.now());
+    const total = Math.max((new Date(c.dataset.due + 'T23:59:59') - start) / 864e5, 1);
+    const pct = Math.min(100, Math.max(0, ((new Date() - start) / 864e5 / total) * 100));
     const wrap = $('.due', c), txt = $('.due-text', c); if (!wrap) return;
     wrap.classList.toggle('late', days < 0); wrap.classList.toggle('warn', days >= 0 && days <= 3);
     txt.textContent = days < 0 ? `Quá hạn ${-days} ngày` : days === 0 ? 'Hết hạn hôm nay' : `Còn ${days} ngày`;

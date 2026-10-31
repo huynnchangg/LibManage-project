@@ -4,12 +4,15 @@ from functools import wraps
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
+import re
+
+from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
 from ..extensions import db
 from ..models import (
     COPY_AVAILABLE, COPY_BORROWED, COPY_DAMAGED, COPY_LOST, COPY_MAINTENANCE, COPY_RESERVED,
-    LOAN_BORROWING, LOAN_PENDING, LOAN_READY, LOAN_RETURNED, ROLE_READER,
+    LOAN_BORROWING, LOAN_CANCELLED, LOAN_DAMAGED, LOAN_LOST, LOAN_PENDING, LOAN_READY, LOAN_REJECTED, LOAN_RETURNED, ROLE_READER,
     Book, BookCopy, Category, Loan, LoanSlip, User,
 )
 from ..services import book_service, loan_service
@@ -244,7 +247,7 @@ def user_new():
     if request.method == "POST":
         f = request.form
         username = f.get("username", "").strip()
-        email = f.get("email", "").strip()
+        email = f.get("email", "").strip().lower()
         full_name = f.get("full_name", "").strip()
         student_code = f.get("student_code", "").strip()
         password = f.get("password", "").strip() or "reader123"
@@ -255,8 +258,10 @@ def user_new():
             flash("Tên đăng nhập này đã tồn tại trên hệ thống.", "danger")
         elif User.query.filter_by(email=email).first():
             flash("Địa chỉ email này đã được sử dụng.", "danger")
+        elif len(password) < 6:
+            flash("Mật khẩu phải có tối thiểu 6 ký tự.", "danger")
         else:
-            user = User(username=username, email=email, full_name=full_name, student_code=student_code or None)
+            user = User(username=username, email=email, full_name=full_name, student_code=student_code or None, role=ROLE_READER)
             user.set_password(password)
             db.session.add(user)
             db.session.commit()
@@ -318,7 +323,7 @@ def loans():
     page = request.args.get("page", 1, type=int)
     per_page = 15
 
-    query = Loan.query.options(joinedload(Loan.user), joinedload(Loan.book), joinedload(Loan.copy))
+    query = Loan.query.options(joinedload(Loan.user), joinedload(Loan.book), joinedload(Loan.copy), joinedload(Loan.slip))
 
     if status == "ready":
         query = query.filter(Loan.status == LOAN_READY)
@@ -327,7 +332,11 @@ def loans():
     elif status == "overdue":
         query = query.filter(Loan.status == LOAN_BORROWING, Loan.due_date < date.today())
     elif status == "returned":
-        query = query.filter(Loan.status.in_([LOAN_RETURNED, "damaged", "lost"]))
+        query = query.filter(Loan.status.in_([LOAN_RETURNED, LOAN_DAMAGED, LOAN_LOST]))
+    elif status == "rejected":
+        query = query.filter(Loan.status == LOAN_REJECTED)
+    elif status == "cancelled":
+        query = query.filter(Loan.status == LOAN_CANCELLED)
     elif status == "all":
         pass
     else:
@@ -335,9 +344,10 @@ def loans():
 
     if q:
         like = f"%{q}%"
-        query = query.join(User, Loan.user_id == User.id).join(Book, Loan.book_id == Book.id).outerjoin(BookCopy, Loan.copy_id == BookCopy.id).join(LoanSlip, Loan.slip_id == LoanSlip.id).filter(
+        query = query.join(User, Loan.user_id == User.id).join(Book, Loan.book_id == Book.id).outerjoin(BookCopy, Loan.copy_id == BookCopy.id).outerjoin(LoanSlip, Loan.slip_id == LoanSlip.id).filter(
             db.or_(
                 LoanSlip.code.ilike(like),
+                User.username.ilike(like),
                 User.full_name.ilike(like),
                 User.student_code.ilike(like),
                 Book.title.ilike(like),
@@ -345,7 +355,15 @@ def loans():
             )
         )
 
-    pagination = query.order_by(Loan.requested_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    if status == "overdue":
+        order_col = Loan.due_date.asc()
+    elif status == "ready":
+        order_col = Loan.pickup_deadline.asc()
+    elif status == "returned":
+        order_col = Loan.returned_at.desc()
+    else:
+        order_col = Loan.requested_at.desc()
+    pagination = query.order_by(order_col).paginate(page=page, per_page=per_page, error_out=False)
     return render_template(
         "admin/loans.html",
         pagination=pagination,
@@ -367,7 +385,10 @@ def loan_checkout():
         # Tìm user theo student_code hoặc username
         reader = User.query.filter(
             User.role == ROLE_READER,
-            db.or_(User.student_code == student_query, User.username == student_query)
+            db.or_(
+                func.lower(User.student_code) == student_query.lower(),
+                func.lower(User.username) == student_query.lower()
+            )
         ).first()
 
         if not reader:
@@ -375,7 +396,7 @@ def loan_checkout():
             return render_template("admin/checkout.html", student_query=student_query, barcodes_text=barcodes_text, note=note)
 
         # Tách danh sách barcode từ textarea hoặc dấu phẩy
-        barcodes = [b.strip() for b in barcodes_text.replace("\n", ",").split(",") if b.strip()]
+        barcodes = [b.strip() for b in re.split(r"[\s,;]+", barcodes_text) if b.strip()]
 
         try:
             slip = loan_service.direct_checkout(current_user, reader, barcodes, note=note)
@@ -485,6 +506,7 @@ def fines():
         like = f"%{q}%"
         query = query.filter(
             db.or_(
+                User.username.ilike(like),
                 User.full_name.ilike(like),
                 User.student_code.ilike(like),
                 Book.title.ilike(like)

@@ -26,7 +26,10 @@ def login():
             else:
                 login_user(user)
                 default = "admin.dashboard" if user.is_admin else "main.index"
-                return redirect(_safe_next(request.args.get("next")) or url_for(default))
+                target = _safe_next(request.args.get("next"))
+                if user.is_admin and target and (target.startswith("/my") or target.startswith("/cart")):
+                    target = None
+                return redirect(target or url_for(default))
         else:
             flash("Tên đăng nhập hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại.", "danger")
     return render_template("login.html")

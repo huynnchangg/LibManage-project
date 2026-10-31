@@ -48,7 +48,7 @@
       <div class="rules">
         <div>{{ icon('clock') }}<span>Mượn tối đa <b>{{ config.LOAN_DAYS }} ngày</b></span></div>
         <div>{{ icon('refresh') }}<span>Gia hạn <b>{{ config.MAX_RENEWALS }} lần</b> (+{{ config.RENEW_DAYS }} ngày)</span></div>
-        <div>{{ icon('alert') }}<span>Trả muộn phạt <b>{{ '{:,}'.format(config.FINE_PER_DAY).replace(',', '.') }} đ/ngày</b></span></div>
+        <div>{{ icon('alert') }}<span>Trả muộn phạt <b>{{ config.FINE_PER_DAY|vnd }}/ngày</b></span></div>
       </div>
     </div>
   </div>

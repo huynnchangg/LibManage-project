@@ -2,13 +2,15 @@ from sqlalchemy import func
 
 from ..extensions import db
 from ..models import (
-    COPY_AVAILABLE, COPY_BORROWED, LOAN_BORROWING, LOAN_PENDING, LOAN_READY,
+    COPY_AVAILABLE, COPY_BORROWED, COPY_DAMAGED, COPY_LOST, COPY_RESERVED,
+    LOAN_BORROWING, LOAN_PENDING, LOAN_READY,
     Book, BookCopy, Category, Loan, User,
 )
 from .loan_service import LoanError
 
 
 def search_books(q="", category_id=None, only_available=False, page=1, per_page=9, active_only=True):
+    q = (q or "").strip()
     query = Book.query
     if active_only:
         query = query.filter(Book.is_active.is_(True))
@@ -75,7 +77,7 @@ def save_book(book, form):
         # Chỉnh sửa sách hiện tại: đồng bộ số lượng BookCopy
         current_copies = BookCopy.query.filter_by(book_id=book.id).all()
         current_count = len(current_copies)
-        borrowed_count = sum(1 for c in current_copies if c.status in (COPY_BORROWED, "reserved"))
+        borrowed_count = sum(1 for c in current_copies if c.status in (COPY_BORROWED, COPY_RESERVED))
 
         if total < borrowed_count:
             raise LoanError(f"Hiện có {borrowed_count} bản đang được giữ hoặc mượn. Tổng số bản không thể nhỏ hơn {borrowed_count}.")
@@ -180,7 +182,9 @@ def dashboard_stats():
                    .limit(5).all())
 
     top_readers = (db.session.query(User.full_name, func.count(Loan.id).label("n"))
-                   .join(Loan, Loan.user_id == User.id).group_by(User.id)
+                   .join(Loan, Loan.user_id == User.id)
+                   .filter(User.role == "reader")
+                   .group_by(User.id)
                    .order_by(func.count(Loan.id).desc()).limit(5).all())
 
     return {
@@ -190,7 +194,7 @@ def dashboard_stats():
         "readers": User.query.filter_by(role="reader").count(),
         "pending": Loan.query.filter_by(status=LOAN_PENDING).count(),
         "ready": Loan.query.filter_by(status=LOAN_READY).count(),
-        "borrowing": len(borrowing),
+        "borrowing": sum(1 for l in borrowing if not l.is_overdue),
         "overdue": sum(1 for l in borrowing if l.is_overdue),
         "unpaid": unpaid,
         "top_books": top_books,

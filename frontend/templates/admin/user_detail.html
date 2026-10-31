@@ -118,6 +118,16 @@
         {% if l.fine_amount %}
           <b style="color:var(--{{ 'success' if l.fine_paid else 'danger' }})">{{ l.fine_amount|vnd }}</b>
           <div class="small">{{ 'Đã thu' if l.fine_paid else 'Chưa nộp' }}</div>
+          {% if not l.fine_paid %}
+            <form method="post" action="{{ url_for('admin.fine_pay', loan_id=l.id) }}" data-confirm="Xác nhận đã thu {{ l.fine_amount|vnd }} của {{ user.full_name }}?" class="mt-1">
+              {{ csrf() }}
+              <button class="btn btn-success btn-sm" style="padding:2px 8px;font-size:0.75rem">{{ icon('check') }} Thu tiền</button>
+            </form>
+          {% endif %}
+          {% if l.fine_paid and l.fine_payments %}
+            {% set payment = l.fine_payments|sort(attribute='paid_at')|last %}
+            <div class="small muted">{{ payment.paid_at|dt('%d/%m/%Y') }} · {{ payment.collector.full_name if payment.collector else 'Thủ thư' }}</div>
+          {% endif %}
         {% else %}
           <span class="muted">—</span>
         {% endif %}

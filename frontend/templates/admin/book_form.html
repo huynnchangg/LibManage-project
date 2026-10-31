@@ -15,7 +15,7 @@
         {% for c in categories %}<option value="{{ c.id }}" {{ 'selected' if (f.category_id|string) == c.id|string }}>{{ c.name }}</option>{% endfor %}
       </select></div>
     <div class="field col-4"><label>Năm xuất bản</label><input name="year" type="number" class="input" value="{{ f.year or '' }}"></div>
-    <div class="field col-4"><label>Tổng số bản *</label><input name="total_copies" type="number" min="0" class="input" required value="{{ f.total_copies if f.total_copies is not none else 1 }}"></div>
+    <div class="field col-4"><label>Tổng số bản *</label><input name="total_copies" type="number" min="1" class="input" required value="{{ f.total_copies if f.total_copies is not none else 1 }}"></div>
     <div class="field col-6"><label>Vị trí kệ (Khu vực / Ngăn)</label><input name="location" class="input" placeholder="Ví dụ: Kệ CNTT - Ngăn 02" value="{{ f.location or '' }}"></div>
     <div class="field col-6"><label>Giá bìa sách (VND) *</label><input name="price" type="number" min="0" step="1000" class="input" required value="{{ f.price or 100000 }}"></div>
     <div class="field col-12"><label>URL ảnh bìa (tuỳ chọn)</label><input name="cover_url" class="input" placeholder="https://..." value="{{ f.cover_url or '' }}"></div>

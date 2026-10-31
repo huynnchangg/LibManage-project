@@ -5,7 +5,8 @@
 {% set total_c = s.total_copies or 1 %}
 {% set avail = s.available_copies if s.available_copies is defined else (s.total_copies - s.borrowing) %}
 {% set pct_avail = ((avail / total_c * 100)|round(1)) if total_c else 100 %}
-{% set pct_borrow = ((s.borrowing / total_c * 100)|round(1)) if total_c else 0 %}
+{% set total_borrowed = s.borrowing + s.overdue %}
+{% set pct_borrow = ((total_borrowed / total_c * 100)|round(1)) if total_c else 0 %}
 <div class="page-head" data-reveal><div><span class="eyebrow">{{ icon('chart') }} Dashboard</span><h1 class="mt-1">Tổng quan hoạt động</h1></div></div>
 
 <div class="stat-grid" data-stagger>
@@ -39,7 +40,7 @@
       </div>
       <div class="legend">
         <div><i style="background:var(--primary)"></i>Sẵn trong kho: <b>{{ avail }}</b> <small class="muted">({{ pct_avail }}%)</small></div>
-        <div><i style="background:var(--line)"></i>Đang cho mượn: <b>{{ s.borrowing }}</b> <small class="muted">({{ pct_borrow }}%)</small></div>
+        <div><i style="background:var(--line)"></i>Đang cho mượn: <b>{{ total_borrowed }}</b> <small class="muted">({{ pct_borrow }}%)</small></div>
         <div class="muted">Tổng cộng: {{ total_c }} bản</div>
       </div>
     </div>

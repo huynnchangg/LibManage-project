@@ -90,7 +90,7 @@
       <div><h4>Quy định mượn</h4><ul class="muted">
         <li>Thời hạn: {{ config.LOAN_DAYS }} ngày, gia hạn {{ config.MAX_RENEWALS }} lần</li>
         <li>Tối đa {{ config.MAX_ACTIVE_LOANS }} cuốn cùng lúc</li>
-        <li>Phạt trả muộn: {{ '{:,}'.format(config.FINE_PER_DAY).replace(',', '.') }} đ/ngày</li>
+        <li>Phạt trả muộn: {{ config.FINE_PER_DAY|vnd }}/ngày</li>
       </ul></div>
     </div>
     <div class="copy">© 2026 Thư viện NEU · Bài tập nhóm môn Lập trình Web</div>

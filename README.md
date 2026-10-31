@@ -7,7 +7,7 @@ Thành viên: **Huyền Trang** (TV1 – UI/Frontend, tester, nghiệp vụ tra 
 
 ## 1. Phát biểu nhiệm vụ
 
-Số hoá toàn bộ quy trình mượn – trả sách của thư viện trường đại học theo mô hình thực tế: độc giả tra cứu, thêm sách vào giỏ mượn hoặc mượn nhanh 1-click, thủ thư duyệt và giữ sách tại quầy trong 48 giờ, xác nhận giao sách, cho mượn trực tiếp tại quầy bằng mã vạch (Barcode), kiểm tra tình trạng sách khi hoàn trả (hư hỏng 25%–100%, báo mất) và thu tiền phạt minh bạch.
+Số hoá toàn bộ quy trình mượn – trả sách của thư viện trường đại học theo mô hình thực tế: độc giả tra cứu, thêm sách vào giỏ mượn hoặc mượn nhanh 1-click, thủ thư duyệt và giữ sách tại quầy trong 48 giờ, xác nhận giao sách, cho mượn trực tiếp tại quầy bằng mã vạch (Barcode), kiểm tra tình trạng sách khi hoàn trả (hư hỏng 0–100%, báo mất) và thu tiền phạt minh bạch có lưu lịch sử giao dịch.
 
 ## 2. Quy trình nghiệp vụ chuẩn
 
@@ -110,7 +110,7 @@ library/
 │   │   │   └── loan_service.py      # Quy tắc mượn, duyệt, trả sách, tính phạt quá hạn & hư hại
 │   │   ├── config.py                # Cấu hình hệ thống & thông số nghiệp vụ (LOAN_DAYS, FINE...)
 │   │   ├── extensions.py            # Khởi tạo SQLAlchemy, LoginManager, CSRFProtect
-│   │   ├── models.py                # ORM Models (User, Book, BookCopy, LoanSlip, Loan, CartItem)
+│   │   ├── models.py                # ORM Models (User, Book, BookCopy, LoanSlip, Loan, CartItem, FinePayment)
 │   │   └── __init__.py              # Application Factory (cấu hình trỏ sang frontend/, bảo mật)
 │   ├── instance/
 │   │   └── library.db               # Cơ sở dữ liệu SQLite cục bộ
@@ -118,7 +118,7 @@ library/
 │   ├── requirements.txt             # Danh sách thư viện Python phụ thuộc
 │   ├── run.py                       # File khởi chạy backend độc lập
 │   ├── seed.py                      # Script khởi tạo và nạp dữ liệu mẫu vào CSDL
-│   └── test_flow.py                 # Bộ kiểm thử tự động 9 phân hệ nghiệp vụ
+│   └── test_flow.py                 # Bộ kiểm thử tự động 19 phân hệ nghiệp vụ (100% PASS)
 │
 ├── run.py                           # Điểm chạy máy chủ duy nhất từ thư mục gốc
 ├── README.md                        # Tài liệu hướng dẫn dự án
@@ -152,19 +152,19 @@ LoanSlip.processed_by → User  (thủ thư duyệt/giao)
 * Tra cứu, lọc sách theo thể loại, tìm kiếm tức thì.
 * **Giỏ mượn sách (Borrow Cart):** Gom nhiều cuốn vào giỏ mượn, gửi phiếu mượn 1 lần.
 * **Mượn nhanh 1-click:** Bấm mượn trực tiếp tại trang chi tiết sách.
-* **Quản lý mượn trả cá nhân:** Đếm ngược hạn nhận sách 48h, đếm ngược hạn trả 14 ngày, gia hạn trực tuyến (+7 ngày), huỷ yêu cầu khi chưa nhận.
+* **Quản lý mượn trả cá nhân:** Đếm ngược hạn nhận sách 48h, đếm ngược hạn trả 14 ngày, gia hạn trực tuyến (+7 ngày), huỷ yêu cầu ở trạng thái chờ duyệt và chờ lấy sách.
 * **In phiếu mượn:** Xem chi tiết phiếu mượn và in ra giấy (CSS Print).
 
 **Thủ thư (Admin):**
-* **Dashboard thống kê:** Đồ thị Donut trực quan kho sách, top sách mượn nhiều, độc giả tích cực, cảnh báo nợ phạt.
+* **Dashboard thống kê:** Đồ thị Donut trực quan kho sách, top sách mượn nhiều, độc giả tích cực, cảnh báo nợ phạt. Số liệu "Đang mượn" tách biệt với "Quá hạn".
 * **Cho mượn trực tiếp tại quầy:** Nhập mã SV + quét mã vạch (Barcode) xuất sách ngay trong 5 giây.
-* **Duyệt mượn trực tuyến:** Gán bản sao vật lý cụ thể, giữ chỗ 48h cho độc giả.
+* **Duyệt mượn trực tuyến:** Kiểm tra điều kiện độc giả (tài khoản, nợ phạt, sách quá hạn), gán bản sao vật lý, giữ chỗ 48h. Tự động hủy và hoàn trả tồn kho khi hết 48h.
 * **Bàn giao sách tại quầy:** Xác nhận độc giả đến nhận sách và bắt đầu tính hạn 14 ngày.
-* **Nhận trả sách thông minh:** Tự động tính tiền phạt quá hạn, phạt hư hại 25%–100%, bồi thường mất sách, tùy chọn thu tiền mặt ngay tại quầy.
-* **Quản lý sách & Bản sao:** Thêm/sửa sách, đặt giá bìa, quản lý danh sách mã vạch từng cuốn, ẩn/hiện lưu hành.
-* **Quản lý thể loại:** Thêm, xóa và **đổi tên thể loại**.
-* **Quản lý độc giả:** Phân trang, tìm kiếm, tạo tài khoản độc giả mới, đặt lại mật khẩu (reset password), khóa/mở khóa tài khoản.
-* **Quản lý tiền phạt:** Lọc Đã thu / Chưa thu, tìm kiếm, thu tiền phạt tại quầy (tự động tạo giao dịch FinePayment và chống thu phạt trùng lặp).
+* **Nhận trả sách thông minh:** Tự động tính tiền phạt quá hạn (sort ưu tiên quá hạn lâu nhất), phạt hư hại 25%–100%, bồi thường mất sách, tùy chọn thu tiền mặt ngay tại quầy.
+* **Quản lý sách & Bản sao:** Thêm/sửa sách, đặt giá bìa, quản lý mã vạch từng bản sao, sửa trạng thái bản sao và tự động đồng bộ tồn kho, ẩn/hiện lưu hành (sách ẩn bị chặn 404 toàn diện).
+* **Quản lý thể loại:** Thêm, xóa và đổi tên thể loại.
+* **Quản lý độc giả:** Phân trang, tìm kiếm theo tên/mã SV/username, tạo tài khoản mới, đặt lại mật khẩu, khóa/mở khóa tài khoản.
+* **Quản lý tiền phạt:** Lọc Đã thu / Chưa thu, tìm kiếm, thu tiền phạt tại quầy (tạo giao dịch FinePayment, chống thu trùng).
 
 **REST API JSON (`/api/v1/`):**
 * `GET /api/v1/books`: Danh sách sách (hỗ trợ phân trang, tìm kiếm, lọc thể loại).
@@ -180,7 +180,7 @@ pip install -r backend/requirements.txt
 # 2. Chạy ứng dụng từ thư mục gốc
 python run.py       # → http://127.0.0.1:5000
 
-# 3. Chạy kiểm thử tự động toàn diện
+# 3. Chạy kiểm thử tự động toàn diện (19 phân hệ, kết quả 100% PASS)
 python backend/test_flow.py
 
 # 4. Khởi tạo lại CSDL sạch (tuỳ chọn)
@@ -198,7 +198,7 @@ Phân tích cấu trúc code và sinh đồ thị quan hệ giữa các module.
 
 ```
 graphify-out/
-├── graph.html          # Đồ thị tương tác (293 nodes, 633 edges, 11 communities)
+├── graph.html          # Đồ thị tương tác (293 nodes, 735 edges, 11 communities)
 ├── graph.json          # Dữ liệu đồ thị thô
 ├── GRAPH_REPORT.md     # Báo cáo: God Nodes, Import Cycles, Knowledge Gaps
 └── cost.json           # Chi phí token
@@ -217,3 +217,15 @@ Sinh sơ đồ kiến trúc, ERD và sequence diagram tự động từ codebase
 ```
 
 Mở file `.html` tương ứng trong mỗi thư mục để xem sơ đồ trực tiếp trên trình duyệt.
+
+## 8. Nhật ký thay đổi
+
+### v1.1 — 01/11/2026 (Kiểm thử & Sửa lỗi)
+
+Rà soát toàn hệ thống, chạy 19 phân hệ kiểm thử tự động — **100% PASS**.  
+Phát hiện và vá 2 lỗi logic trong tầng Service:
+
+| # | File | Mô tả lỗi | Cách vá |
+|---|------|-----------|---------|
+| BUG-01 | `loan_service.py` · `direct_checkout()` | Thủ thư có thể nhập 2 mã vạch của cùng 1 đầu sách trong 1 phiếu walk-in, tạo 2 `Loan` items cùng `book_id` cho 1 người — vi phạm quy tắc "1 người 1 đầu sách". | Thêm kiểm tra `set(book_ids)` sau khi resolve danh sách bản sao; ném `LoanError` nếu phát hiện trùng. |
+| BUG-04 | `loan_service.py` · `approve()` | Ghi `book.available_copies` thủ công (`max(0, n-1)`) thay vì dùng `sync_copies_count()`, gây không nhất quán nếu số đếm bị lệch từ trước. | Thay dòng ghi thủ công bằng `book.sync_copies_count()` để đồng bộ từ trạng thái thực tế của `BookCopy`. |

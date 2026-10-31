@@ -1,5 +1,5 @@
 {% extends "admin/_layout.html" %}
-{% from "macros.html" import csrf, icon, empty %}
+{% from "macros.html" import csrf, icon, empty, pager %}
 {% block title %}Độc giả{% endblock %}
 {% block admin_content %}
 <div class="page-head" data-reveal>
@@ -7,11 +7,18 @@
   <a class="btn btn-primary" href="{{ url_for('admin.user_new') }}">{{ icon('plus') }} Thêm độc giả</a>
 </div>
 
+<div class="tabs" data-reveal>
+  {% for k, label in [('all', 'Tất cả'), ('active', 'Đang hoạt động'), ('locked', 'Bị khoá')] %}
+  <a class="tab {{ 'active' if status_filter == k }}" href="{{ url_for('admin.users', status=k, q=q or None) }}">{{ label }}</a>
+  {% endfor %}
+</div>
+
 <form class="toolbar" method="get" data-reveal>
-  <input name="q" value="{{ request.args.q or '' }}" class="input" style="max-width:380px" placeholder="Tên, tài khoản, mã SV...">
+  <input type="hidden" name="status" value="{{ status_filter }}">
+  <input name="q" value="{{ q or '' }}" class="input" style="max-width:380px" placeholder="Tên, tài khoản, mã SV, email...">
   <button class="btn btn-ghost">{{ icon('search') }} Tìm</button>
-  {% if request.args.q %}
-  <a class="btn btn-ghost" href="{{ url_for('admin.users') }}">{{ icon('x') }} Đặt lại</a>
+  {% if q %}
+  <a class="btn btn-ghost" href="{{ url_for('admin.users', status=status_filter) }}">{{ icon('x') }} Đặt lại</a>
   {% endif %}
 </form>
 
@@ -60,5 +67,6 @@
   {% endfor %}
   </tbody>
 </table></div>
+{{ pager(pagination, 'admin.users', {'status': status_filter, 'q': q or None}) }}
 {% else %}<div class="card">{{ empty('👥', 'Chưa có độc giả phù hợp') }}</div>{% endif %}
 {% endblock %}

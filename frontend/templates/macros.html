@@ -42,7 +42,7 @@
 {% macro cover(book, cls='') %}
 {% if book.cover_url %}
 <div class="cover cover-img {{ cls }}">
-  <img src="{{ book.cover_url }}" alt="Bìa sách {{ book.title }}" loading="lazy" onerror="this.parentElement.classList.remove('cover-img');this.parentElement.classList.add('c{{ (book.category_id or 0) % 6 }}');this.remove()">
+  <img src="{{ book.cover_url }}" alt="Bìa sách {{ book.title }}" loading="lazy" onerror="this.parentElement.classList.remove('cover-img');this.parentElement.classList.add('c{{ (book.category_id or 0) % 6 }}');this.nextElementSibling.style.display='';this.remove()">
   <div class="cover-in" style="display:none">
     <span class="cover-cat">{{ book.category.name if book.category else 'Sách' }}</span>
     <span class="cover-title">{{ book.title }}</span>

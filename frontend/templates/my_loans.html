@@ -77,6 +77,8 @@
     <div class="loan-actions">
       {% if l.status == 'pending' %}
         <form method="post" action="{{ url_for('main.cancel', loan_id=l.id) }}" data-confirm="Bạn muốn huỷ yêu cầu mượn “{{ l.book.title }}”?">{{ csrf() }}<button class="btn btn-ghost btn-sm">{{ icon('x') }} Huỷ yêu cầu</button></form>
+      {% elif l.status == 'ready_for_pickup' %}
+        <form method="post" action="{{ url_for('main.cancel', loan_id=l.id) }}" data-confirm="Huỷ yêu cầu sẽ trả lại chỗ giữ sách. Bạn có chắc không?">{{ csrf() }}<button class="btn btn-ghost btn-sm">{{ icon('x') }} Huỷ yêu cầu</button></form>
       {% elif l.status == 'borrowing' and not l.is_overdue and l.renew_count < config.MAX_RENEWALS %}
         <form method="post" action="{{ url_for('main.renew', loan_id=l.id) }}">{{ csrf() }}<button class="btn btn-primary btn-sm">{{ icon('refresh') }} Gia hạn (+{{ config.RENEW_DAYS }} ngày)</button></form>
       {% endif %}

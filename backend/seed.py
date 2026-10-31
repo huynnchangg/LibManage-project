@@ -23,7 +23,7 @@ from app.models import (
     LOAN_BORROWING, LOAN_CANCELLED, LOAN_DAMAGED, LOAN_LOST, LOAN_PENDING,
     LOAN_READY, LOAN_REJECTED, LOAN_RETURNED, ROLE_ADMIN, ROLE_READER,
     SLIP_TYPE_DIRECT, SLIP_TYPE_ONLINE,
-    Book, BookCopy, Category, Loan, LoanSlip, User,
+    Book, BookCopy, Category, FinePayment, Loan, LoanSlip, User,
 )
 
 # ---------------------------------------------------------------------------
@@ -476,6 +476,51 @@ def _seed_loans(readers: list[User], books: list[Book], admin: User) -> None:
         processed_by=admin.id,
     )
     db.session.add(loan_lost)
+
+    # 8. Một lượt ĐÃ TRẢ & ĐÃ NỘP PHẠT (fine_paid=True kèm lịch sử giao dịch FinePayment)
+    paid_reader = readers[0]
+    paid_book = pool[(slip_counter + 1) % len(pool)]
+    paid_copy = paid_book.copies[0] if paid_book.copies else None
+    slip_paid = LoanSlip(
+        code=make_slip_code(),
+        user_id=paid_reader.id,
+        slip_type=SLIP_TYPE_ONLINE,
+        status=LOAN_RETURNED,
+        created_at=now - timedelta(days=30),
+        borrowed_at=now - timedelta(days=28),
+        due_date=today - timedelta(days=14),
+        completed_at=now - timedelta(days=10),
+        processed_by=admin.id,
+    )
+    db.session.add(slip_paid)
+    db.session.flush()
+
+    loan_paid = Loan(
+        slip_id=slip_paid.id,
+        user_id=paid_reader.id,
+        book_id=paid_book.id,
+        copy_id=paid_copy.id if paid_copy else None,
+        status=LOAN_RETURNED,
+        requested_at=slip_paid.created_at,
+        borrowed_at=slip_paid.borrowed_at,
+        due_date=slip_paid.due_date,
+        returned_at=slip_paid.completed_at,
+        fine_overdue=20000,
+        fine_amount=20000,
+        fine_paid=True,
+        processed_by=admin.id,
+    )
+    db.session.add(loan_paid)
+    db.session.flush()
+
+    db.session.add(
+        FinePayment(
+            loan_id=loan_paid.id,
+            amount=20000,
+            paid_at=loan_paid.returned_at,
+            collector_id=admin.id,
+        )
+    )
 
     db.session.commit()
     print(f"✓ Tạo các phiếu mượn (LoanSlip) và chi tiết (Loan/LoanItem) mẫu phong phú.")
