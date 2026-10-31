@@ -198,13 +198,13 @@ Phân tích cấu trúc code và sinh đồ thị quan hệ giữa các module.
 
 ```
 graphify-out/
-├── graph.html          # Đồ thị tương tác (279 nodes, 697 edges, 12 communities)
+├── graph.html          # Đồ thị tương tác (293 nodes, 633 edges, 11 communities)
 ├── graph.json          # Dữ liệu đồ thị thô
 ├── GRAPH_REPORT.md     # Báo cáo: God Nodes, Import Cycles, Knowledge Gaps
 └── cost.json           # Chi phí token
 ```
 
-Các community chính được phát hiện: *Admin Portal & Permissions*, *Circulation & Fine Engine*, *Reader UI & Jinja Macros*, *Catalog API & Inventory*, *Design System & UI Tokens*.
+Các community chính được phát hiện: *Loan Circulation & 48h Auto-Cancel Flow*, *Book Inventory & Physical Copies*, *Admin Management & Physical Copy Editing*, *Admin UI Templates & Profile Views*, *System Architecture & Design Specs*.
 
 ### Archify — Sơ đồ kiến trúc
 Sinh sơ đồ kiến trúc, ERD và sequence diagram tự động từ codebase.

@@ -38,3 +38,4 @@ graphify-out/manifest.json
 .archify/*/*.finalize.json
 .archify/*/*.finalize-summary.json
 .archify/*/*.browser-check.json
+.archify/*/*.delivery.json

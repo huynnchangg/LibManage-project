@@ -10,13 +10,22 @@
       {
         "id": "catalog_view",
         "label": "Book & Inventory Catalog",
-        "focus": ["category", "book", "book_copy"],
+        "focus": [
+          "category",
+          "book",
+          "book_copy"
+        ],
         "note": "Books categorized with physical barcodes in inventory."
       },
       {
         "id": "circulation_view",
         "label": "Borrowing & Fines Lifecycle",
-        "focus": ["loan_slip", "loan", "fine_payment", "user"],
+        "focus": [
+          "loan_slip",
+          "loan",
+          "fine_payment",
+          "user"
+        ],
         "note": "Reader slips containing loan items and penalty settlements."
       }
     ]
@@ -35,15 +44,44 @@
       "col": 0,
       "width": 260,
       "attributes": [
-        { "name": "id", "type": "integer", "key": "pk" },
-        { "name": "username", "type": "varchar(80)", "key": "uk" },
-        { "name": "password_hash", "type": "varchar(200)" },
-        { "name": "full_name", "type": "varchar(120)" },
-        { "name": "email", "type": "varchar(120)" },
-        { "name": "student_code", "type": "varchar(50)" },
-        { "name": "is_admin", "type": "boolean" },
-        { "name": "active", "type": "boolean" },
-        { "name": "created_at", "type": "datetime" }
+        {
+          "name": "id",
+          "type": "integer",
+          "key": "pk"
+        },
+        {
+          "name": "username",
+          "type": "varchar(80)",
+          "key": "uk"
+        },
+        {
+          "name": "password_hash",
+          "type": "varchar(200)"
+        },
+        {
+          "name": "full_name",
+          "type": "varchar(120)"
+        },
+        {
+          "name": "email",
+          "type": "varchar(120)"
+        },
+        {
+          "name": "student_code",
+          "type": "varchar(50)"
+        },
+        {
+          "name": "is_admin",
+          "type": "boolean"
+        },
+        {
+          "name": "active",
+          "type": "boolean"
+        },
+        {
+          "name": "created_at",
+          "type": "datetime"
+        }
       ]
     },
     {
@@ -54,13 +92,44 @@
       "col": 1,
       "width": 260,
       "attributes": [
-        { "name": "id", "type": "integer", "key": "pk" },
-        { "name": "code", "type": "varchar(30)", "key": "uk" },
-        { "name": "user_id", "type": "integer", "key": "fk", "references": "user.id" },
-        { "name": "status", "type": "varchar(20)" },
-        { "name": "librarian_id", "type": "integer", "key": "fk", "references": "user.id" },
-        { "name": "note", "type": "varchar(255)" },
-        { "name": "created_at", "type": "datetime" }
+        {
+          "name": "id",
+          "type": "integer",
+          "key": "pk"
+        },
+        {
+          "name": "code",
+          "type": "varchar(30)",
+          "key": "uk"
+        },
+        {
+          "name": "user_id",
+          "type": "integer",
+          "key": "fk",
+          "references": "user.id"
+        },
+        {
+          "name": "status",
+          "type": "varchar(20)"
+        },
+        {
+          "name": "pickup_deadline",
+          "type": "datetime"
+        },
+        {
+          "name": "librarian_id",
+          "type": "integer",
+          "key": "fk",
+          "references": "user.id"
+        },
+        {
+          "name": "note",
+          "type": "varchar(255)"
+        },
+        {
+          "name": "created_at",
+          "type": "datetime"
+        }
       ]
     },
     {
@@ -71,16 +140,63 @@
       "col": 1,
       "width": 280,
       "attributes": [
-        { "name": "id", "type": "integer", "key": "pk" },
-        { "name": "slip_id", "type": "integer", "key": "fk", "references": "loan_slip.id" },
-        { "name": "book_id", "type": "integer", "key": "fk", "references": "book.id" },
-        { "name": "copy_id", "type": "integer", "key": "fk", "references": "book_copy.id" },
-        { "name": "user_id", "type": "integer", "key": "fk", "references": "user.id" },
-        { "name": "status", "type": "varchar(20)" },
-        { "name": "due_date", "type": "datetime" },
-        { "name": "return_date", "type": "datetime" },
-        { "name": "fine_amount", "type": "integer" },
-        { "name": "fine_paid", "type": "boolean" }
+        {
+          "name": "id",
+          "type": "integer",
+          "key": "pk"
+        },
+        {
+          "name": "slip_id",
+          "type": "integer",
+          "key": "fk",
+          "references": "loan_slip.id"
+        },
+        {
+          "name": "book_id",
+          "type": "integer",
+          "key": "fk",
+          "references": "book.id"
+        },
+        {
+          "name": "copy_id",
+          "type": "integer",
+          "key": "fk",
+          "references": "book_copy.id"
+        },
+        {
+          "name": "user_id",
+          "type": "integer",
+          "key": "fk",
+          "references": "user.id"
+        },
+        {
+          "name": "status",
+          "type": "varchar(20)"
+        },
+        {
+          "name": "pickup_deadline",
+          "type": "datetime"
+        },
+        {
+          "name": "due_date",
+          "type": "datetime"
+        },
+        {
+          "name": "return_date",
+          "type": "datetime"
+        },
+        {
+          "name": "damage_percent",
+          "type": "integer"
+        },
+        {
+          "name": "fine_amount",
+          "type": "integer"
+        },
+        {
+          "name": "fine_paid",
+          "type": "boolean"
+        }
       ]
     },
     {
@@ -91,13 +207,41 @@
       "col": 1,
       "width": 260,
       "attributes": [
-        { "name": "id", "type": "integer", "key": "pk" },
-        { "name": "loan_id", "type": "integer", "key": "fk", "references": "loan.id" },
-        { "name": "user_id", "type": "integer", "key": "fk", "references": "user.id" },
-        { "name": "librarian_id", "type": "integer", "key": "fk", "references": "user.id" },
-        { "name": "amount", "type": "integer" },
-        { "name": "payment_method", "type": "varchar(30)" },
-        { "name": "paid_at", "type": "datetime" }
+        {
+          "name": "id",
+          "type": "integer",
+          "key": "pk"
+        },
+        {
+          "name": "loan_id",
+          "type": "integer",
+          "key": "fk",
+          "references": "loan.id"
+        },
+        {
+          "name": "user_id",
+          "type": "integer",
+          "key": "fk",
+          "references": "user.id"
+        },
+        {
+          "name": "librarian_id",
+          "type": "integer",
+          "key": "fk",
+          "references": "user.id"
+        },
+        {
+          "name": "amount",
+          "type": "integer"
+        },
+        {
+          "name": "payment_method",
+          "type": "varchar(30)"
+        },
+        {
+          "name": "paid_at",
+          "type": "datetime"
+        }
       ]
     },
     {
@@ -108,9 +252,20 @@
       "col": 2,
       "width": 250,
       "attributes": [
-        { "name": "id", "type": "integer", "key": "pk" },
-        { "name": "name", "type": "varchar(100)", "key": "uk" },
-        { "name": "description", "type": "text" }
+        {
+          "name": "id",
+          "type": "integer",
+          "key": "pk"
+        },
+        {
+          "name": "name",
+          "type": "varchar(100)",
+          "key": "uk"
+        },
+        {
+          "name": "description",
+          "type": "text"
+        }
       ]
     },
     {
@@ -121,14 +276,45 @@
       "col": 2,
       "width": 260,
       "attributes": [
-        { "name": "id", "type": "integer", "key": "pk" },
-        { "name": "title", "type": "varchar(200)" },
-        { "name": "author", "type": "varchar(150)" },
-        { "name": "category_id", "type": "integer", "key": "fk", "references": "category.id" },
-        { "name": "isbn", "type": "varchar(30)" },
-        { "name": "price", "type": "integer" },
-        { "name": "total_copies", "type": "integer" },
-        { "name": "available_copies", "type": "integer" }
+        {
+          "name": "id",
+          "type": "integer",
+          "key": "pk"
+        },
+        {
+          "name": "title",
+          "type": "varchar(200)"
+        },
+        {
+          "name": "author",
+          "type": "varchar(150)"
+        },
+        {
+          "name": "category_id",
+          "type": "integer",
+          "key": "fk",
+          "references": "category.id"
+        },
+        {
+          "name": "isbn",
+          "type": "varchar(30)"
+        },
+        {
+          "name": "price",
+          "type": "integer"
+        },
+        {
+          "name": "is_active",
+          "type": "boolean"
+        },
+        {
+          "name": "total_copies",
+          "type": "integer"
+        },
+        {
+          "name": "available_copies",
+          "type": "integer"
+        }
       ]
     },
     {
@@ -139,11 +325,30 @@
       "col": 2,
       "width": 250,
       "attributes": [
-        { "name": "id", "type": "integer", "key": "pk" },
-        { "name": "book_id", "type": "integer", "key": "fk", "references": "book.id" },
-        { "name": "barcode", "type": "varchar(50)", "key": "uk" },
-        { "name": "status", "type": "varchar(20)" },
-        { "name": "note", "type": "varchar(255)" }
+        {
+          "name": "id",
+          "type": "integer",
+          "key": "pk"
+        },
+        {
+          "name": "book_id",
+          "type": "integer",
+          "key": "fk",
+          "references": "book.id"
+        },
+        {
+          "name": "barcode",
+          "type": "varchar(50)",
+          "key": "uk"
+        },
+        {
+          "name": "status",
+          "type": "varchar(20)"
+        },
+        {
+          "name": "note",
+          "type": "varchar(255)"
+        }
       ]
     }
   ],
