@@ -44,6 +44,8 @@ def register():
         error = None
         if not (username and email and full_name):
             error = "Vui lòng điền đầy đủ các trường thông tin bắt buộc."
+        elif "<" in full_name or ">" in full_name or "<" in username or ">" in username:
+            error = "Họ tên và tên đăng nhập không được chứa ký tự HTML (< hoặc >)."
         elif len(password) < 6:
             error = "Mật khẩu phải có độ dài tối thiểu từ 6 ký tự trở lên."
         elif len(password) > 128:

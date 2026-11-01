@@ -321,7 +321,12 @@ document.addEventListener('DOMContentLoaded', () => {
         curOverdueFine = parseInt(b.dataset.overdueFine || '0', 10);
         const overdueDays = parseInt(b.dataset.overdueDays || '0', 10);
 
-        desc.innerHTML = `Độc giả: <b>${b.dataset.user}</b> · Sách: <b>${b.dataset.book}</b>`;
+        desc.textContent = '';
+        const userBold = document.createElement('b');
+        userBold.textContent = b.dataset.user || '';
+        const bookBold = document.createElement('b');
+        bookBold.textContent = b.dataset.book || '';
+        desc.append('Độc giả: ', userBold, ' · Sách: ', bookBold);
         meta.innerHTML = `Giá bìa gốc: <b>${fmt.format(curPrice)} đ</b> · ${overdueDays > 0 ? `<span style="color:var(--danger)">Quá hạn: <b>${overdueDays} ngày</b></span>` : '<span style="color:var(--success)">Trả đúng hạn</span>'}`;
         overdueDisp.textContent = fmt.format(curOverdueFine) + ' đ';
 
@@ -346,7 +351,12 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.btn-open-reject').forEach(b => {
       b.addEventListener('click', () => {
         form.action = b.dataset.action;
-        desc.innerHTML = `Từ chối độc giả <b>${b.dataset.user}</b> mượn cuốn “<b>${b.dataset.book}</b>”.`;
+        desc.textContent = '';
+        const userBold = document.createElement('b');
+        userBold.textContent = b.dataset.user || '';
+        const bookBold = document.createElement('b');
+        bookBold.textContent = b.dataset.book || '';
+        desc.append('Từ chối độc giả ', userBold, ' mượn cuốn “', bookBold, '”.');
         const reasonInput = document.getElementById('reject-reason');
         if (reasonInput) reasonInput.value = '';
         rejModal.classList.add('open');

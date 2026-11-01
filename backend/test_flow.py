@@ -534,6 +534,27 @@ resp_fine_search = ok(cl.get("/admin/fines?q=r1"))
 assert "r1" in resp_fine_search.get_data(as_text=True)
 print("Mục 19: Tìm kiếm tiền phạt theo username độc giả hoạt động chuẩn xác.")
 
+print("--- 20. Kiểm tra phòng chống XSS (Stored XSS Prevention) ---")
+# 1. Đăng ký với tên chứa thẻ HTML độc hại bị chặn
+resp_xss_reg = cl.post("/register", data={
+    "username": "xss_user",
+    "email": "xss@example.com",
+    "full_name": "<img src=x onerror=alert(1)>",
+    "password": "password123",
+    "confirm": "password123"
+}, follow_redirects=True)
+assert "không được chứa ký tự HTML" in resp_xss_reg.get_data(as_text=True)
+
+# 2. Admin tạo độc giả với tên chứa thẻ HTML độc hại cũng bị chặn
+resp_xss_admin = cl.post("/admin/users/new", data={
+    "username": "xss_user2",
+    "email": "xss2@example.com",
+    "full_name": "<script>alert(1)</script>",
+    "password": "password123"
+}, follow_redirects=True)
+assert "không được chứa ký tự HTML" in resp_xss_admin.get_data(as_text=True)
+print("Mục 20: Kiểm tra phòng chống Stored XSS hoạt động chuẩn xác.")
+
 print("\n" + "="*50)
-print("✅ TẤT CẢ 19 PHÂN HỆ KIỂM THỬ ĐẠT 100%!")
+print("✅ TẤT CẢ 20 PHÂN HỆ KIỂM THỬ ĐẠT 100%!")
 print("="*50)

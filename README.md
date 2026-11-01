@@ -118,7 +118,7 @@ library/
 │   ├── requirements.txt             # Danh sách thư viện Python phụ thuộc
 │   ├── run.py                       # File khởi chạy backend độc lập
 │   ├── seed.py                      # Script khởi tạo và nạp dữ liệu mẫu vào CSDL
-│   └── test_flow.py                 # Bộ kiểm thử tự động 19 phân hệ nghiệp vụ (100% PASS)
+│   └── test_flow.py                 # Bộ kiểm thử tự động 20 phân hệ nghiệp vụ & bảo mật (100% PASS)
 │
 ├── run.py                           # Điểm chạy máy chủ duy nhất từ thư mục gốc
 ├── README.md                        # Tài liệu hướng dẫn dự án

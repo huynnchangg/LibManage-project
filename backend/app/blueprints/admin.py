@@ -254,6 +254,8 @@ def user_new():
 
         if not username or not email or not full_name:
             flash("Vui lòng điền đầy đủ tên đăng nhập, email và họ tên.", "danger")
+        elif "<" in full_name or ">" in full_name or "<" in username or ">" in username:
+            flash("Họ tên và tên đăng nhập không được chứa ký tự HTML (< hoặc >).", "danger")
         elif User.query.filter_by(username=username).first():
             flash("Tên đăng nhập này đã tồn tại trên hệ thống.", "danger")
         elif User.query.filter_by(email=email).first():
